@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Flight Time Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="time-block">
+                <div class="time-label">МОСКВА</div>
+                <div class="time-value" id="moscow-time">--:--</div>
+                <div class="date-value" id="moscow-date">-- --- ----</div>
+            </div>
+
+            <div class="time-difference" id="time-difference">+0ч</div>
+
+            <div class="time-block" style="align-items: flex-end;">
+                <div class="time-label">МЕСТНОЕ</div>
+                <div class="time-value" id="local-time">--:--</div>
+                <div class="date-value" id="local-date">-- --- ----</div>
+            </div>
+        </header>
+
+        <div class="flight-card" id="flight-card">
+            <div class="flight-header">
+                <div>
+                    <div class="flight-main-info">
+                        <div class="flight-number">SU ----</div>
+                        <div class="pilot-badge" title="Рабочий рейс">
+                            <i class="fas fa-plane"></i>
+                        </div>
+                        <div class="location-badge" title="Выезд из дома">
+                            <i class="fas fa-home"></i>
+                        </div>
+                    </div>
+                    <div class="flight-time">--:--</div>
+                    <div class="flight-details">
+                        <div class="flight-date">-- ----. ----</div>
+                        <div class="flight-duration">- ч -- мин</div>
+                    </div>
+                </div>
+                <div class="flight-actions">
+                    <button class="action-button" id="refresh-flight" title="Обновить">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flight-route">
+                <div class="airport">
+                    <div class="airport-code">--- / ----</div>
+                    <div class="airport-name">------</div>
+                </div>
+                <div class="route-arrow">
+                    <i class="fas fa-long-arrow-alt-right"></i>
+                </div>
+                <div class="airport">
+                    <div class="airport-code">--- / ----</div>
+                    <div class="airport-name">------</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="countdown-card">
+            <div class="countdown-icon">
+                <i class="fas fa-moon"></i>
+            </div>
+            <div class="countdown-content">
+                <div class="countdown-label">До отхода ко сну</div>
+                <div class="countdown-time" id="next-stage-time">1 ч 25 мин</div>
+            </div>
+        </div>
+
+        <div class="stages-container">
+            <div class="stage-item" data-stage="rest">
+                <div class="stage-icon">
+                    <i class="fas fa-moon"></i>
+                </div>
+                <div class="stage-time">22:00</div>
+                <div class="stage-label">Отдых</div>
+                <div class="stage-countdown">за 0:30</div>
+            </div>
+            <div class="stage-item stage-active" data-stage="sleep">
+                <div class="stage-icon">
+                    <i class="fas fa-bed"></i>
+                </div>
+                <div class="stage-time">22:30</div>
+                <div class="stage-label">Отбой</div>
+                <div class="stage-countdown">за 8:00</div>
+            </div>
+            <div class="stage-item" data-stage="wakeup">
+                <div class="stage-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div class="stage-time">06:40</div>
+                <div class="stage-label">Подъём</div>
+                <div class="stage-countdown">за 1:10</div>
+            </div>
+            <div class="stage-item" data-stage="taxi">
+                <div class="stage-icon">
+                    <i class="fas fa-taxi"></i>
+                </div>
+                <div class="stage-time">07:50</div>
+                <div class="stage-label">Такси</div>
+                <div class="stage-countdown">за 0:10</div>
+            </div>
+            <div class="stage-item" data-stage="exit">
+                <div class="stage-icon">
+                    <i class="fas fa-door-open"></i>
+                </div>
+                <div class="stage-time">08:00</div>
+                <div class="stage-label">Выход</div>
+                <div class="stage-countdown">за 2:30</div>
+            </div>
+        </div>
+
+        <div class="sleep-settings-card">
+            <div class="sleep-header">
+                <div class="sleep-title">Время сна</div>
+                <div class="sleep-toggle-container">
+                    <span class="toggle-label">Сон</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" class="toggle-checkbox" id="sleep-toggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <button class="settings-button-small" id="settings-button-small" title="Настройки">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="sleep-controls">
+                <button class="sleep-button" id="sleep-decrease" disabled>
+                    <i class="fas fa-minus"></i>
+                </button>
+                <div class="sleep-value" id="sleep-value">9:00</div>
+                <button class="sleep-button" id="sleep-increase">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно настроек -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-backdrop" id="settings-modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Настройки</div>
+                <button class="modal-close" id="settings-modal-close">&times;</button>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-section-title">Из дома</div>
+                <div class="time-settings-grid">
+                    <div class="time-setting">
+                        <div class="time-label">Отдых</div>
+                        <input type="text" class="time-input" value="за 0:30" placeholder="за 0:30">
+                    </div>
+                    <div class="time-setting">
+                        <div class="time-label">Подъём</div>
+                        <input type="text" class="time-input" value="за 1:10" placeholder="за 1:10">
+                    </div>
+                    <div class="time-setting">
+                        <div class="time-label">Такси</div>
+                        <input type="text" class="time-input" value="за 0:10" placeholder="за 0:10">
+                    </div>
+                    <div class="time-setting">
+                        <div class="time-label">Выезд</div>
+                        <input type="text" class="time-input" value="за 2:30" placeholder="за 2:30">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-section-title">Из гостиницы</div>
+                <div class="time-settings-grid">
+                    <div class="time-setting">
+                        <div class="time-label">Отдых</div>
+                        <input type="text" class="time-input" value="за 0:30" placeholder="за 0:30">
+                    </div>
+                    <div class="time-setting">
+                        <div class="time-label">Подъём</div>
+                        <input type="text" class="time-input" value="за 1:10" placeholder="за 1:10">
+                    </div>
+                    <div class="time-setting">
+                        <div class="time-label">Такси</div>
+                        <input type="text" class="time-input" value="за 0:10" placeholder="за 0:10">
+                    </div>
+                    <div class="time-setting">
+                        <div class="time-label">Выезд</div>
+                        <input type="text" class="time-input" value="за 2:30" placeholder="за 2:30">
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-section">
+                <div class="modal-section-title">Авторизация</div>
+                <input type="text" class="auth-input" placeholder="Логин" value="demo_user">
+                <div class="password-container">
+                    <input type="password" class="auth-input" placeholder="Пароль" value="password" id="password-input">
+                    <button class="password-toggle" id="password-toggle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-button modal-button-secondary" id="cancel-settings">Отмена</button>
+                <button class="modal-button modal-button-primary" id="save-settings">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования этапа -->
+    <div class="modal" id="stage-modal">
+        <div class="modal-backdrop" id="stage-modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-stage-title">Редактирование этапа</div>
+                <button class="modal-close" id="stage-modal-close">&times;</button>
+            </div>
+            <div class="modal-time-controls">
+                <button class="modal-time-button" id="time-decrease">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <div class="modal-time-value" id="modal-time-value">06:40</div>
+                <button class="modal-time-button" id="time-increase">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="modal-info">
+                <div class="modal-info-item">
+                    <span>До следующего этапа:</span>
+                    <span id="modal-next-stage">1 ч 10 мин</span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-button modal-button-secondary" id="reset-time">Сбросить</button>
+                <button class="modal-button modal-button-primary" id="save-time">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно информации о рейсе -->
+    <div class="modal" id="flight-modal">
+        <div class="modal-backdrop" id="flight-modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Информация о рейсе</div>
+                <button class="modal-close" id="flight-modal-close">&times;</button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--primary-color); margin-bottom: 8px;">SU 1004</div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+                    <div>
+                        <div style="font-size: 18px; font-weight: 600;">SVO / UUEE</div>
+                        <div style="font-size: 14px; opacity: 0.7;">Шереметьево</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <i class="fas fa-long-arrow-alt-right" style="color: var(--primary-color); font-size: 18px;"></i>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 18px; font-weight: 600;">KGD / UMKK</div>
+                        <div style="font-size: 14px; opacity: 0.7;">Калининград</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-info">
+                <div class="modal-info-item">
+                    <span>Портал:</span>
+                    <span>14:30, 22 нояб. 2024</span>
+                </div>
+                <div class="modal-info-item">
+                    <span>Табло:</span>
+                    <span>14:30, 22 нояб. 2024</span>
+                </div>
+                <div class="modal-info-item">
+                    <span>Длительность:</span>
+                    <span>2 ч 35 мин</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

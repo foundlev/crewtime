@@ -1,0 +1,817 @@
+:root {
+    --primary-color: #007AFF;
+    --text-color: #FFFFFF;
+    --bg-color: #000000;
+    --card-bg: #1C1C1E;
+    --border-color: #38383A;
+    --accent-color: #30D158;
+    --warning-color: #FF453A;
+    --soft-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --text-color: #1C1C1E;
+        --bg-color: #F2F2F7;
+        --card-bg: #FFFFFF;
+        --border-color: #C6C6C8;
+    }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background-color 0.3s ease;
+}
+
+.container {
+    padding: 0 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background-color: var(--card-bg);
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    box-shadow: var(--soft-shadow);
+    border-radius: 20px;
+    margin: 16px 0 12px 0;
+}
+
+.time-block {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.time-label {
+    font-size: 13px;
+    opacity: 0.6;
+    margin-bottom: 8px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.time-value {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.date-value {
+    font-size: 15px;
+    opacity: 0.7;
+    font-weight: 400;
+}
+
+.time-difference {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #007AFF, #5856D6);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 24px;
+    font-size: 15px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+    backdrop-filter: blur(10px);
+    min-width: 70px;
+    text-align: center;
+}
+
+.flight-card {
+    background-color: var(--card-bg);
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: var(--soft-shadow);
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.flight-card:active {
+    transform: scale(0.98);
+}
+
+.flight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.flight-main-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.flight-number {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.flight-time {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 6px;
+}
+
+.flight-details {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.flight-date {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.flight-duration {
+    font-size: 14px;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.flight-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.action-button {
+    background: linear-gradient(135deg, #007AFF, #5856D6);
+    color: white;
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.action-button:active {
+    transform: scale(0.95);
+}
+
+.pilot-badge {
+    background: linear-gradient(135deg, #007AFF, #5856D6);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.location-badge {
+    background: linear-gradient(135deg, #007AFF, #5856D6);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.flight-route {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.airport {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.airport-code {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.airport-name {
+    font-size: 13px;
+    opacity: 0.7;
+    line-height: 1.3;
+}
+
+.route-arrow {
+    margin: 0 16px;
+    color: var(--primary-color);
+    font-size: 18px;
+}
+
+.countdown-card {
+    background: linear-gradient(135deg, #007AFF, #5856D6);
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(0, 122, 255, 0.3);
+    margin-bottom: 16px;
+    text-align: center;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.countdown-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+    animation: pulse 3s ease-in-out infinite;
+}
+
+.countdown-icon {
+    font-size: 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.countdown-content {
+    position: relative;
+    z-index: 1;
+}
+
+.countdown-label {
+    font-size: 16px;
+    opacity: 0.9;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.countdown-time {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.stages-container {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.stage-item {
+    background-color: var(--card-bg);
+    padding: 12px 6px;
+    border-radius: 14px;
+    box-shadow: var(--soft-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.stage-item:active {
+    transform: scale(0.95);
+}
+
+.stage-icon {
+    font-size: 18px;
+    color: var(--primary-color);
+    margin-bottom: 2px;
+}
+
+.stage-time {
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.stage-label {
+    font-size: 10px;
+    opacity: 0.6;
+    text-align: center;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stage-countdown {
+    font-size: 10px;
+    opacity: 0.6;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.stage-active {
+    border-color: var(--primary-color);
+    background-color: rgba(0, 122, 255, 0.05);
+}
+
+.stage-inactive {
+    opacity: 0.4;
+}
+
+.stage-inactive .stage-icon {
+    color: var(--border-color);
+}
+
+.sleep-settings-card {
+    background-color: var(--card-bg);
+    padding: 16px;
+    border-radius: 20px;
+    box-shadow: var(--soft-shadow);
+    margin-bottom: 12px;
+}
+
+.sleep-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.sleep-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.sleep-toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toggle-label {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+}
+
+.toggle-checkbox {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.toggle-checkbox:checked + .toggle-slider {
+    background-color: var(--primary-color);
+}
+
+.toggle-checkbox:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+
+.sleep-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0, 122, 255, 0.1);
+    border-radius: 16px;
+    padding: 12px 16px;
+}
+
+.sleep-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary-color);
+    min-width: 60px;
+    text-align: center;
+}
+
+.sleep-button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.sleep-button:active {
+    transform: scale(0.95);
+}
+
+.sleep-button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.settings-button-small {
+    background: rgba(0, 122, 255, 0.1);
+    color: var(--primary-color);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s ease;
+}
+
+.settings-button-small:active {
+    background: rgba(0, 122, 255, 0.2);
+    transform: scale(0.95);
+}
+
+/* Модальные окна */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 1001;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 24px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: background-color 0.2s ease;
+}
+
+.modal-close:hover, .modal-close:active {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.modal-section {
+    margin-bottom: 24px;
+}
+
+.modal-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--primary-color);
+}
+
+.time-settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.time-setting {
+    background: rgba(0, 122, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.time-label {
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    opacity: 0.8;
+}
+
+.time-input {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text-color);
+    font-size: 14px;
+    width: 100%;
+    text-align: center;
+}
+
+.auth-section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+}
+
+.auth-input {
+    width: 100%;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px;
+    color: var(--text-color);
+    font-size: 16px;
+    margin-bottom: 12px;
+}
+
+.password-container {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-color);
+    opacity: 0.6;
+    cursor: pointer;
+    font-size: 16px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.modal-button {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.modal-button:active {
+    transform: scale(0.98);
+}
+
+.modal-button-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.modal-button-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+}
+
+/* Анимация для плавного обновления времени */
+@keyframes softUpdate {
+    0% { opacity: 1; transform: translateY(0); }
+    50% { opacity: 0.7; transform: translateY(-2px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+
+.time-value.updating {
+    animation: softUpdate 0.6s ease-in-out;
+}
+
+/* Адаптация под iPhone 14 Pro */
+@media only screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) {
+    .header {
+        margin-top: calc(16px + env(safe-area-inset-top));
+    }
+
+    .stages-container {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+    }
+}
+
+/* Дополнительные улучшения для светлой темы */
+@media (prefers-color-scheme: light) {
+    .time-difference, .action-button, .sleep-button {
+        box-shadow: 0 4px 15px rgba(0, 122, 255, 0.2);
+    }
+
+    .header, .flight-card, .sleep-settings-card {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .stage-active {
+        background-color: rgba(0, 122, 255, 0.08);
+    }
+
+    .sleep-controls {
+        background: rgba(0, 122, 255, 0.08);
+    }
+
+    .time-setting {
+        background: rgba(0, 122, 255, 0.08);
+    }
+
+    .modal-button-secondary {
+        background: rgba(0, 0, 0, 0.08);
+    }
+
+    .settings-button-small {
+        background: rgba(0, 122, 255, 0.08);
+    }
+}
+
+/* ===== Обновление данных рейса (crewPortalInfo) ===== */
+const CREW_PORTAL_LS_KEY = 'crewPortalInfo';
+const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/test.php?randomDate=false';
+
+async function fetchCrewPortalInfo() {
+    const response = await fetch(CREW_PORTAL_TEST_URL, {
+        method: 'GET',
+        cache: 'no-store'
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    const json = await response.json();
+
+    if (!json || typeof json !== 'object') {
+        throw new Error('Invalid JSON');
+    }
+
+    if (json.success !== true) {
+        // success:false или вообще нет поля
+        throw new Error('API success=false');
+    }
+
+    if (!json.data || typeof json.data !== 'object') {
+        throw new Error('Missing data');
+    }
+
+    // Сохраняем ТОЛЬКО data
+    localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(json.data));
+
+    return json.data;
+}
+
+function setRefreshIcon(iconEl, state) {
+    // state: 'sync' | 'ok' | 'err'
+    iconEl.classList.remove('fa-sync-alt', 'fa-check', 'fa-times');
+
+    if (state === 'ok') {
+        iconEl.classList.add('fa-check');
+        return;
+    }
+
+    if (state === 'err') {
+        iconEl.classList.add('fa-times');
+        return;
+    }
+
+    iconEl.classList.add('fa-sync-alt');
+}
+
+function withTempIcon(iconEl, state, ms = 1200) {
+    setRefreshIcon(iconEl, state);
+    window.setTimeout(() => setRefreshIcon(iconEl, 'sync'), ms);
+}
+
+// Обработчик кнопки обновления (важно: НЕ даём всплыть клику на flight-card)
+const refreshBtn = document.getElementById('refresh-flight');
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const iconEl = refreshBtn.querySelector('i');
+        if (!iconEl) return;
+
+        // Крутим иконку во время запроса
+        iconEl.classList.add('fa-spin');
+
+        try {
+            await fetchCrewPortalInfo();
+            withTempIcon(iconEl, 'ok', 1200);
+        } catch (err) {
+            console.error('Failed to refresh crew portal info:', err);
+            withTempIcon(iconEl, 'err', 1500);
+        } finally {
+            // fa-spin оставляем только на время загрузки
+            iconEl.classList.remove('fa-spin');
+        }
+    }, { passive: false });
+}
+
+// Если у тебя будут ещё action-button в будущем — тут можно добавить общий хэндлер,
+// но сейчас он не нужен, чтобы не мешать логике обновления.
