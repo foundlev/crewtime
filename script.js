@@ -164,6 +164,144 @@ function formatDuration(durationStr) {
     return `${h} ч ${m.toString().padStart(2, '0')} мин`;
 }
 
+function parseHHMMToMinutes(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
+        return 0;
+    }
+
+    const [hh, mm] = timeStr.split(':');
+    const h = Number.parseInt(hh, 10);
+    const m = Number.parseInt(mm, 10);
+
+    if (Number.isNaN(h) || Number.isNaN(m)) {
+        return 0;
+    }
+
+    return h * 60 + m;
+}
+
+function addMinutes(date, minutes) {
+    return new Date(date.getTime() + minutes * 60000);
+}
+
+function getCurrentContextFromFlightData(data) {
+    const depIcao = data && data.departure && data.departure.icao ? data.departure.icao.toString().toUpperCase() : '';
+    return depIcao === 'UUEE' ? 'home' : 'hotel';
+}
+
+function getCurrentContextFromStorage() {
+    const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+    const data = raw ? safeParseJson(raw) : null;
+    return getCurrentContextFromFlightData(data);
+}
+
+function applyStageLabelsForContext(context) {
+    const taxiStage = document.querySelector('.stage-item[data-stage="taxi"]');
+    const exitStage = document.querySelector('.stage-item[data-stage="exit"]');
+
+    if (taxiStage) {
+        const labelEl = taxiStage.querySelector('.stage-label');
+        const iconEl = taxiStage.querySelector('.stage-icon i');
+
+        if (context === 'hotel') {
+            if (labelEl) labelEl.textContent = 'Выход';
+            if (iconEl) {
+                iconEl.classList.remove('fa-taxi');
+                iconEl.classList.add('fa-door-open');
+            }
+        } else {
+            if (labelEl) labelEl.textContent = 'Такси';
+            if (iconEl) {
+                iconEl.classList.remove('fa-door-open');
+                iconEl.classList.add('fa-taxi');
+            }
+        }
+    }
+
+    if (exitStage) {
+        const labelEl = exitStage.querySelector('.stage-label');
+        const iconEl = exitStage.querySelector('.stage-icon i');
+
+        if (context === 'hotel') {
+            if (labelEl) labelEl.textContent = 'Выезд';
+            if (iconEl) {
+                iconEl.classList.remove('fa-door-open');
+                iconEl.classList.add('fa-taxi');
+            }
+        } else {
+            if (labelEl) labelEl.textContent = 'Выход';
+            if (iconEl) {
+                iconEl.classList.remove('fa-taxi');
+                iconEl.classList.add('fa-door-open');
+            }
+        }
+    }
+}
+
+function updateStageTimesFromFlight(data) {
+    const stages = document.querySelectorAll('.stage-item');
+    if (!stages.length) return;
+
+    if (!data || typeof data !== 'object' || !data.startDate) {
+        stages.forEach((el) => {
+            const timeEl = el.querySelector('.stage-time');
+            if (timeEl) timeEl.textContent = '--:--';
+        });
+        return;
+    }
+
+    const startDate = new Date(data.startDate);
+    if (Number.isNaN(startDate.getTime())) {
+        stages.forEach((el) => {
+            const timeEl = el.querySelector('.stage-time');
+            if (timeEl) timeEl.textContent = '--:--';
+        });
+        return;
+    }
+
+    const context = getCurrentContextFromFlightData(data);
+    applyStageLabelsForContext(context);
+    applyStageSettingsToUI(context);
+
+    const settings = getStageSettings();
+    const prefix = context === 'hotel' ? 'hotel_' : 'home_';
+
+    const exitOffsetMin = parseHHMMToMinutes(settings[`${prefix}exit`]);
+    const taxiOffsetMin = parseHHMMToMinutes(settings[`${prefix}taxi`]);
+    const wakeupOffsetMin = parseHHMMToMinutes(settings[`${prefix}wakeup`]);
+    const restOffsetMin = parseHHMMToMinutes(settings[`${prefix}rest`]);
+
+    const sleepDurationMin = (sleepHours * 60) + sleepMinutes;
+
+    const tExit = addMinutes(startDate, -exitOffsetMin);
+    const tTaxi = addMinutes(tExit, -taxiOffsetMin);
+    const tWake = addMinutes(tTaxi, -wakeupOffsetMin);
+    const tSleep = addMinutes(tWake, -sleepDurationMin);
+    const tRest = addMinutes(tSleep, -restOffsetMin);
+
+    const map = {
+        rest: tRest,
+        sleep: tSleep,
+        wakeup: tWake,
+        taxi: tTaxi,
+        exit: tExit
+    };
+
+    document.querySelectorAll('.stage-item').forEach((el) => {
+        const key = el.dataset.stage;
+        const timeEl = el.querySelector('.stage-time');
+        if (!timeEl) return;
+
+        const d = map[key];
+        if (!d || Number.isNaN(d.getTime())) {
+            timeEl.textContent = '--:--';
+            return;
+        }
+
+        timeEl.textContent = formatFlightTime(d);
+    });
+}
+
 function setFlightCardDashes() {
     const flightCard = document.getElementById('flight-card');
     if (!flightCard) return;
@@ -190,6 +328,10 @@ function setFlightCardDashes() {
         if (arrCode) arrCode.textContent = '--- / ----';
         if (arrName) arrName.textContent = '------';
     }
+
+    document.querySelectorAll('.stage-item .stage-time').forEach((el) => {
+        el.textContent = '--:--';
+    });
 
     // Pilot badge: when there is no data -> show loading style
     const badgeEl = flightCard.querySelector('.pilot-badge');
@@ -259,6 +401,7 @@ function updateFlightCardFromData(data) {
 
     const startDateStr = data.startDate;
     const startDate = startDateStr ? new Date(startDateStr) : null;
+    updateStageTimesFromFlight(data);
 
     const flightNumberEl = flightCard.querySelector('.flight-number');
     const flightTimeEl = flightCard.querySelector('.flight-time');
@@ -533,12 +676,26 @@ function updateSleepDisplay() {
     const sleepValueElement = document.getElementById('sleep-value');
     const decreaseButton = document.getElementById('sleep-decrease');
     const increaseButton = document.getElementById('sleep-increase');
+    const sleepToggle = document.getElementById('sleep-toggle');
 
-    sleepValueElement.textContent = `${sleepHours}:${sleepMinutes.toString().padStart(2, '0')}`;
+    if (sleepValueElement) {
+        sleepValueElement.textContent = `${sleepHours}:${sleepMinutes.toString().padStart(2, '0')}`;
+    }
+
+    // Если сон выключен — контролы недоступны
+    if (sleepToggle && sleepToggle.checked === false) {
+        if (decreaseButton) decreaseButton.disabled = true;
+        if (increaseButton) increaseButton.disabled = true;
+        return;
+    }
 
     // Блокировка кнопок при достижении границ
-    decreaseButton.disabled = sleepHours === 0 && sleepMinutes === 30;
-    increaseButton.disabled = sleepHours === 15 && sleepMinutes === 0;
+    if (decreaseButton) {
+        decreaseButton.disabled = sleepHours === 0 && sleepMinutes === 30;
+    }
+    if (increaseButton) {
+        increaseButton.disabled = sleepHours === 15 && sleepMinutes === 0;
+    }
 }
 
 function changeSleepTime(minutes) {
@@ -552,11 +709,18 @@ function changeSleepTime(minutes) {
     sleepMinutes = totalMinutes % 60;
 
     updateSleepDisplay();
+    try {
+        const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+        const data = raw ? safeParseJson(raw) : null;
+        updateStageTimesFromFlight(data);
+    } catch {
+        // ignore
+    }
 }
 
 // Управление модальными окнами
 function openSettingsModal() {
-    applyStageSettingsToUI('home');
+    applyStageSettingsToUI(getCurrentContextFromStorage());
     applyAuthToUI();
     document.getElementById('settings-modal').style.display = 'flex';
 }
@@ -645,11 +809,24 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateTime, 60000); // Обновление каждую минуту
     // Подтягиваем сохранённые данные рейса в карточку при загрузке
     updateFlightCardFromStorage();
-    applyStageSettingsToUI('home');
+    try {
+        const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+        const data = raw ? safeParseJson(raw) : null;
+        updateStageTimesFromFlight(data);
+    } catch {
+        updateStageTimesFromFlight(null);
+    }
+    applyStageSettingsToUI(getCurrentContextFromStorage());
     applyAuthToUI();
 
     // Инициализация настроек сна
     updateSleepDisplay();
+
+    const sleepToggleInit = document.getElementById('sleep-toggle');
+    const sleepControlsInit = document.querySelector('.sleep-controls');
+    if (sleepToggleInit && sleepControlsInit && sleepToggleInit.checked === false) {
+        sleepControlsInit.classList.add('sleep-controls--disabled');
+    }
 
     // Обработчики для кнопок сна
     document.getElementById('sleep-decrease').addEventListener('click', () => changeSleepTime(-30));
@@ -684,8 +861,15 @@ document.addEventListener('DOMContentLoaded', () => {
             password: (passwordInput?.value || '').toString() || DEFAULT_AUTH.password
         });
 
-        // пока считаем, что выезд из дома
-        applyStageSettingsToUI('home');
+        // Обновляем подписи этапов для текущего режима (Из дома / Из отеля)
+        applyStageSettingsToUI(getCurrentContextFromStorage());
+        try {
+            const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+            const data = raw ? safeParseJson(raw) : null;
+            updateStageTimesFromFlight(data);
+        } catch {
+            // ignore
+        }
         applyAuthToUI();
 
         closeSettingsModal();
@@ -705,14 +889,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Обработчик для переключателя сна
     document.getElementById('sleep-toggle').addEventListener('change', function() {
         const sleepStages = document.querySelectorAll('.stage-item[data-stage="rest"], .stage-item[data-stage="sleep"]');
+        const sleepControls = document.querySelector('.sleep-controls');
+        const decreaseButton = document.getElementById('sleep-decrease');
+        const increaseButton = document.getElementById('sleep-increase');
+
         if (this.checked) {
-            sleepStages.forEach(stage => {
-                stage.classList.remove('stage-inactive');
-            });
+            sleepStages.forEach((stage) => stage.classList.remove('stage-inactive'));
+
+            if (sleepControls) sleepControls.classList.remove('sleep-controls--disabled');
+            if (decreaseButton) decreaseButton.disabled = false;
+            if (increaseButton) increaseButton.disabled = false;
+
+            // вернём логику ограничений 0:30..15:00
+            updateSleepDisplay();
         } else {
-            sleepStages.forEach(stage => {
-                stage.classList.add('stage-inactive');
-            });
+            sleepStages.forEach((stage) => stage.classList.add('stage-inactive'));
+
+            if (sleepControls) sleepControls.classList.add('sleep-controls--disabled');
+            if (decreaseButton) decreaseButton.disabled = true;
+            if (increaseButton) increaseButton.disabled = true;
         }
     });
 
