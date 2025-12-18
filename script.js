@@ -392,15 +392,22 @@ function formatDate(date) {
     return date.toLocaleDateString('ru-RU', options).replace(' г.', '');
 }
 
-// Функция для вычисления разницы во времени
+// Функция для вычисления разницы во времени с поддержкой минутных смещений (например, +3:30)
 function calculateTimeDifference(moscowDate, localDate) {
     const moscowTime = moscowDate.getTime();
     const localTime = localDate.getTime();
-    const diffMs = localTime - moscowTime;
-    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
 
-    let sign = diffHours >= 0 ? '+' : '-';
-    return `${sign}${Math.abs(diffHours)}ч`;
+    const diffMs = localTime - moscowTime;
+    const diffMinutesTotal = Math.round(diffMs / (1000 * 60));
+
+    const sign = diffMinutesTotal >= 0 ? '+' : '−';
+    const absMinutes = Math.abs(diffMinutesTotal);
+
+    const hours = Math.floor(absMinutes / 60);
+    const minutes = absMinutes % 60;
+
+    // формат: +3:30, −1:00
+    return `${sign}${hours}:${minutes.toString().padStart(2, '0')}`;
 }
 
 // Функция для расчета времени до следующего этапа
