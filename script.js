@@ -191,24 +191,50 @@ function setFlightCardDashes() {
         if (arrName) arrName.textContent = '------';
     }
 
-    // Reset pilot badge to default work style
+    // Pilot badge: when there is no data -> show loading style
     const badgeEl = flightCard.querySelector('.pilot-badge');
     const badgeIconEl = badgeEl ? badgeEl.querySelector('i') : null;
     const badgeTextEl = badgeEl ? badgeEl.querySelector('.pilot-badge-text') : null;
 
     if (badgeEl) {
-        badgeEl.classList.add('pilot-badge--work');
-        badgeEl.classList.remove('pilot-badge--passenger');
-        badgeEl.title = 'Рабочий рейс';
+        // Нейтральный вид, чтобы не выглядеть как warning
+        badgeEl.classList.add('pilot-badge--passenger');
+        badgeEl.classList.remove('pilot-badge--work');
+        badgeEl.title = 'Загружаем информацию';
     }
 
     if (badgeIconEl) {
-        badgeIconEl.classList.remove('fa-suitcase-rolling', 'fa-briefcase');
-        badgeIconEl.classList.add('fa-plane');
+        badgeIconEl.classList.remove('fa-plane', 'fa-suitcase-rolling', 'fa-briefcase');
+        badgeIconEl.classList.add('fa-hourglass');
     }
 
     if (badgeTextEl) {
-        badgeTextEl.textContent = 'Рабочий';
+        badgeTextEl.textContent = '--';
+    }
+
+    // Location badge: when there is no data -> show loading style
+    const locationEl = flightCard.querySelector('.location-badge');
+    const locationIconEl = locationEl ? locationEl.querySelector('i') : null;
+    const locationTextEl = locationEl ? locationEl.querySelector('.location-badge-text') : null;
+
+    if (locationEl) {
+        // Снимаем режимы, и ставим нейтральный “loading” вид
+        locationEl.classList.remove('location-badge--home', 'location-badge--hotel');
+
+        // ВАЖНО: это inline-стиль только для режима "нет данных"
+        locationEl.style.background = 'linear-gradient(135deg, #8E8E93, #636366)';
+        locationEl.style.boxShadow = '0 2px 8px rgba(142, 142, 147, 0.22)';
+
+        locationEl.title = 'Загружаем информацию';
+    }
+
+    if (locationIconEl) {
+        locationIconEl.classList.remove('fa-home', 'fa-hotel');
+        locationIconEl.classList.add('fa-hourglass');
+    }
+
+    if (locationTextEl) {
+        locationTextEl.textContent = '--';
     }
 }
 
@@ -219,6 +245,13 @@ function updateFlightCardFromData(data) {
     if (!data || typeof data !== 'object') {
         setFlightCardDashes();
         return;
+    }
+
+    // Clear inline loading styles (setFlightCardDashes uses inline background/shadow)
+    const locationInline = flightCard.querySelector('.location-badge');
+    if (locationInline) {
+        locationInline.style.background = '';
+        locationInline.style.boxShadow = '';
     }
 
     const startDateStr = data.startDate;
@@ -249,6 +282,29 @@ function updateFlightCardFromData(data) {
 
     if (badgeTextEl) {
         badgeTextEl.textContent = isWork ? 'Рабочий' : 'Пасс';
+    }
+
+    // Location badge: if departure.icao === 'UUEE' -> Из дома, else -> Из отеля
+    const locationEl = flightCard.querySelector('.location-badge');
+    const locationIconEl = locationEl ? locationEl.querySelector('i') : null;
+    const locationTextEl = locationEl ? locationEl.querySelector('.location-badge-text') : null;
+
+    const depIcaoForLocation = (data.departure && data.departure.icao) ? data.departure.icao.toString().toUpperCase() : '';
+    const isHome = depIcaoForLocation === 'UUEE';
+
+    if (locationEl) {
+        locationEl.classList.toggle('location-badge--home', isHome);
+        locationEl.classList.toggle('location-badge--hotel', !isHome);
+        locationEl.title = isHome ? 'Из дома' : 'Из отеля';
+    }
+
+    if (locationIconEl) {
+        locationIconEl.classList.remove('fa-home', 'fa-hotel');
+        locationIconEl.classList.add(isHome ? 'fa-home' : 'fa-hotel');
+    }
+
+    if (locationTextEl) {
+        locationTextEl.textContent = isHome ? 'Из дома' : 'Из отеля';
     }
 
     if (flightNumberEl) {
