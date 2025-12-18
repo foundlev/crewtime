@@ -582,6 +582,8 @@ body {
     background: rgba(0, 122, 255, 0.1);
     border-radius: 12px;
     padding: 12px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .time-label {
@@ -595,11 +597,21 @@ body {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 8px 12px;
+    padding: 8px 4px; /* Немного уменьшил боковые отступы, чтобы влезало лучше */
     color: var(--text-color);
     font-size: 14px;
     width: 100%;
     text-align: center;
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+
+    /* --- ВАЖНЫЕ ИСПРАВЛЕНИЯ ДЛЯ iOS --- */
+    -webkit-appearance: none; /* Убирает стандартный стиль Apple */
+    appearance: none;
+    margin: 0; /* Убирает скрытые отступы Safari */
+    box-sizing: border-box; /* Гарантирует, что padding входит в ширину */
+    font-family: inherit; /* Чтобы шрифт не сбрасывался на системный */
 }
 
 .auth-section {
@@ -623,22 +635,49 @@ body {
     position: relative;
 }
 
+.password-container .auth-input {
+    padding-right: 52px;
+}
+
 .password-toggle {
     position: absolute;
-    right: 12px;
-    top: 50%;
+    right: 10px;
+    top: calc(50% - 6px);
     transform: translateY(-50%);
-    background: none;
+    background: rgba(0, 0, 0, 0);
     border: none;
     color: var(--text-color);
-    opacity: 0.6;
+    opacity: 0.7;
     cursor: pointer;
-    font-size: 16px;
-    width: 24px;
-    height: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
+    line-height: 1;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.password-toggle:active {
+    background: rgba(255, 255, 255, 0.08);
+    opacity: 1;
+}
+
+.password-toggle i {
+    font-size: 18px;
+    line-height: 1;
+    width: 1em;
+    height: 1em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.password-toggle i::before {
+    display: block;
+    line-height: 1;
 }
 
 .modal-actions {
@@ -655,6 +694,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.2s ease;
+    font-size: 0.85rem;
 }
 
 .modal-button:active {
@@ -729,89 +769,3 @@ body {
         background: rgba(0, 122, 255, 0.08);
     }
 }
-
-/* ===== Обновление данных рейса (crewPortalInfo) ===== */
-const CREW_PORTAL_LS_KEY = 'crewPortalInfo';
-const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/test.php?randomDate=false';
-
-async function fetchCrewPortalInfo() {
-    const response = await fetch(CREW_PORTAL_TEST_URL, {
-        method: 'GET',
-        cache: 'no-store'
-    });
-
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-    }
-
-    const json = await response.json();
-
-    if (!json || typeof json !== 'object') {
-        throw new Error('Invalid JSON');
-    }
-
-    if (json.success !== true) {
-        // success:false или вообще нет поля
-        throw new Error('API success=false');
-    }
-
-    if (!json.data || typeof json.data !== 'object') {
-        throw new Error('Missing data');
-    }
-
-    // Сохраняем ТОЛЬКО data
-    localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(json.data));
-
-    return json.data;
-}
-
-function setRefreshIcon(iconEl, state) {
-    // state: 'sync' | 'ok' | 'err'
-    iconEl.classList.remove('fa-sync-alt', 'fa-check', 'fa-times');
-
-    if (state === 'ok') {
-        iconEl.classList.add('fa-check');
-        return;
-    }
-
-    if (state === 'err') {
-        iconEl.classList.add('fa-times');
-        return;
-    }
-
-    iconEl.classList.add('fa-sync-alt');
-}
-
-function withTempIcon(iconEl, state, ms = 1200) {
-    setRefreshIcon(iconEl, state);
-    window.setTimeout(() => setRefreshIcon(iconEl, 'sync'), ms);
-}
-
-// Обработчик кнопки обновления (важно: НЕ даём всплыть клику на flight-card)
-const refreshBtn = document.getElementById('refresh-flight');
-if (refreshBtn) {
-    refreshBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const iconEl = refreshBtn.querySelector('i');
-        if (!iconEl) return;
-
-        // Крутим иконку во время запроса
-        iconEl.classList.add('fa-spin');
-
-        try {
-            await fetchCrewPortalInfo();
-            withTempIcon(iconEl, 'ok', 1200);
-        } catch (err) {
-            console.error('Failed to refresh crew portal info:', err);
-            withTempIcon(iconEl, 'err', 1500);
-        } finally {
-            // fa-spin оставляем только на время загрузки
-            iconEl.classList.remove('fa-spin');
-        }
-    }, { passive: false });
-}
-
-// Если у тебя будут ещё action-button в будущем — тут можно добавить общий хэндлер,
-// но сейчас он не нужен, чтобы не мешать логике обновления.

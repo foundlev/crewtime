@@ -1,3 +1,270 @@
+// ===== Работа с данными рейса из localStorage (crewPortalInfo) =====
+const CREW_PORTAL_LS_KEY = 'crewPortalInfo';
+const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/test.php?randomDate=false';
+
+// ===== Настройки этапов (localStorage) =====
+const STAGE_SETTINGS_LS_KEY = 'stageSettings';
+
+const DEFAULT_STAGE_SETTINGS = {
+    home_rest: '00:30',
+    home_wakeup: '01:10',
+    home_taxi: '00:10',
+    home_exit: '02:30',
+    hotel_rest: '00:30',
+    hotel_wakeup: '01:10',
+    hotel_taxi: '00:10',
+    hotel_exit: '02:30'
+};
+
+// ===== Авторизация (localStorage) =====
+const AUTH_LS_KEY = 'authCredentials';
+
+const DEFAULT_AUTH = {
+    login: 'demo_user',
+    password: 'password'
+};
+
+function getAuthCredentials() {
+    const raw = localStorage.getItem(AUTH_LS_KEY);
+    const parsed = raw ? safeParseJson(raw) : null;
+
+    if (!parsed || typeof parsed !== 'object') {
+        return { ...DEFAULT_AUTH };
+    }
+
+    return {
+        ...DEFAULT_AUTH,
+        ...parsed
+    };
+}
+
+function saveAuthCredentials(creds) {
+    localStorage.setItem(AUTH_LS_KEY, JSON.stringify(creds));
+}
+
+function applyAuthToUI() {
+    const creds = getAuthCredentials();
+
+    const loginInput = document.getElementById('login-input');
+    const passwordInput = document.getElementById('password-input');
+
+    if (loginInput) {
+        loginInput.value = (creds.login ?? DEFAULT_AUTH.login).toString();
+    }
+
+    if (passwordInput) {
+        passwordInput.value = (creds.password ?? DEFAULT_AUTH.password).toString();
+    }
+}
+
+function safeParseJson(raw) {
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function getStageSettings() {
+    const raw = localStorage.getItem(STAGE_SETTINGS_LS_KEY);
+    const parsed = raw ? safeParseJson(raw) : null;
+
+    if (!parsed || typeof parsed !== 'object') {
+        return { ...DEFAULT_STAGE_SETTINGS };
+    }
+
+    return {
+        ...DEFAULT_STAGE_SETTINGS,
+        ...parsed
+    };
+}
+
+function saveStageSettings(settings) {
+    localStorage.setItem(STAGE_SETTINGS_LS_KEY, JSON.stringify(settings));
+}
+
+function timeToPretty(timeStr) {
+    // "HH:MM" -> "за H:MM"
+    if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
+        return 'за --:--';
+    }
+
+    const [hhRaw, mmRaw] = timeStr.split(':');
+    const h = Number.parseInt(hhRaw, 10);
+    const m = Number.parseInt(mmRaw, 10);
+
+    if (Number.isNaN(h) || Number.isNaN(m)) {
+        return 'за --:--';
+    }
+
+    return `за ${h}:${m.toString().padStart(2, '0')}`;
+}
+
+function applyStageSettingsToUI(context = 'home') {
+    const settings = getStageSettings();
+
+    // 1) заполняем инпуты в модалке
+    document.querySelectorAll('.time-input[data-setting]').forEach((input) => {
+        const key = input.dataset.setting;
+        if (!key) return;
+        input.value = settings[key] || DEFAULT_STAGE_SETTINGS[key] || '00:00';
+    });
+
+    // 2) обновляем stage-card подписи "за ..."
+    const prefix = context === 'hotel' ? 'hotel_' : 'home_';
+    const map = {
+        rest: `${prefix}rest`,
+        wakeup: `${prefix}wakeup`,
+        taxi: `${prefix}taxi`,
+        exit: `${prefix}exit`
+    };
+
+    document.querySelectorAll('.stage-item').forEach((stageEl) => {
+        const stage = stageEl.dataset.stage;
+        const key = map[stage];
+        if (!key) return;
+
+        const countdownEl = stageEl.querySelector('.stage-countdown');
+        if (!countdownEl) return;
+
+        countdownEl.textContent = timeToPretty(settings[key]);
+    });
+}
+
+function formatFlightTime(date) {
+    return date.toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+}
+
+function formatFlightDate(date) {
+    const options = {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    };
+    return date.toLocaleDateString('ru-RU', options).replace(' г.', '');
+}
+
+function formatDuration(durationStr) {
+    if (!durationStr || typeof durationStr !== 'string' || !durationStr.includes(':')) {
+        return '- ч -- мин';
+    }
+
+    const [hh, mm] = durationStr.split(':');
+    const h = Number.parseInt(hh, 10);
+    const m = Number.parseInt(mm, 10);
+
+    if (Number.isNaN(h) || Number.isNaN(m)) {
+        return '- ч -- мин';
+    }
+
+    return `${h} ч ${m.toString().padStart(2, '0')} мин`;
+}
+
+function setFlightCardDashes() {
+    const flightCard = document.getElementById('flight-card');
+    if (!flightCard) return;
+
+    const flightNumberEl = flightCard.querySelector('.flight-number');
+    const flightTimeEl = flightCard.querySelector('.flight-time');
+    const flightDateEl = flightCard.querySelector('.flight-date');
+    const flightDurationEl = flightCard.querySelector('.flight-duration');
+
+    if (flightNumberEl) flightNumberEl.textContent = 'SU ----';
+    if (flightTimeEl) flightTimeEl.textContent = '--:--';
+    if (flightDateEl) flightDateEl.textContent = '-- --- ----';
+    if (flightDurationEl) flightDurationEl.textContent = '- ч -- мин';
+
+    const airports = flightCard.querySelectorAll('.flight-route .airport');
+    if (airports.length >= 2) {
+        const depCode = airports[0].querySelector('.airport-code');
+        const depName = airports[0].querySelector('.airport-name');
+        const arrCode = airports[1].querySelector('.airport-code');
+        const arrName = airports[1].querySelector('.airport-name');
+
+        if (depCode) depCode.textContent = '--- / ----';
+        if (depName) depName.textContent = '------';
+        if (arrCode) arrCode.textContent = '--- / ----';
+        if (arrName) arrName.textContent = '------';
+    }
+}
+
+function updateFlightCardFromData(data) {
+    const flightCard = document.getElementById('flight-card');
+    if (!flightCard) return;
+
+    if (!data || typeof data !== 'object') {
+        setFlightCardDashes();
+        return;
+    }
+
+    const startDateStr = data.startDate;
+    const startDate = startDateStr ? new Date(startDateStr) : null;
+
+    const flightNumberEl = flightCard.querySelector('.flight-number');
+    const flightTimeEl = flightCard.querySelector('.flight-time');
+    const flightDateEl = flightCard.querySelector('.flight-date');
+    const flightDurationEl = flightCard.querySelector('.flight-duration');
+
+    if (flightNumberEl) {
+        const number = (data.number || '').toString().trim();
+        flightNumberEl.textContent = number ? number : 'SU ----';
+    }
+
+    if (startDate && !Number.isNaN(startDate.getTime())) {
+        if (flightTimeEl) flightTimeEl.textContent = formatFlightTime(startDate);
+        if (flightDateEl) flightDateEl.textContent = formatFlightDate(startDate);
+    } else {
+        if (flightTimeEl) flightTimeEl.textContent = '--:--';
+        if (flightDateEl) flightDateEl.textContent = '-- --- ----';
+    }
+
+    if (flightDurationEl) {
+        flightDurationEl.textContent = formatDuration(data.duration);
+    }
+
+    const airports = flightCard.querySelectorAll('.flight-route .airport');
+    if (airports.length >= 2) {
+        const dep = data.departure || {};
+        const arr = data.arrival || {};
+
+        const depCode = airports[0].querySelector('.airport-code');
+        const depName = airports[0].querySelector('.airport-name');
+        const arrCode = airports[1].querySelector('.airport-code');
+        const arrName = airports[1].querySelector('.airport-name');
+
+        const depIata = (dep.iata || '---').toString();
+        const depIcao = (dep.icao || '----').toString();
+        const arrIata = (arr.iata || '---').toString();
+        const arrIcao = (arr.icao || '----').toString();
+
+        if (depCode) depCode.textContent = `${depIata} / ${depIcao}`;
+        if (depName) depName.textContent = (dep.city || '------').toString();
+
+        if (arrCode) arrCode.textContent = `${arrIata} / ${arrIcao}`;
+        if (arrName) arrName.textContent = (arr.city || '------').toString();
+    }
+}
+
+function updateFlightCardFromStorage() {
+    try {
+        const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+        if (!raw) {
+            setFlightCardDashes();
+            return;
+        }
+
+        const data = JSON.parse(raw);
+        updateFlightCardFromData(data);
+    } catch (err) {
+        console.warn('crewPortalInfo in localStorage is invalid:', err);
+        setFlightCardDashes();
+    }
+}
+
 // Функция для получения московского времени
 function getMoscowTime() {
     const now = new Date();
@@ -89,6 +356,8 @@ function changeSleepTime(minutes) {
 
 // Управление модальными окнами
 function openSettingsModal() {
+    applyStageSettingsToUI('home');
+    applyAuthToUI();
     document.getElementById('settings-modal').style.display = 'flex';
 }
 
@@ -171,6 +440,10 @@ function updateTime() {
 document.addEventListener('DOMContentLoaded', () => {
     updateTime();
     setInterval(updateTime, 60000); // Обновление каждую минуту
+    // Подтягиваем сохранённые данные рейса в карточку при загрузке
+    updateFlightCardFromStorage();
+    applyStageSettingsToUI('home');
+    applyAuthToUI();
 
     // Инициализация настроек сна
     updateSleepDisplay();
@@ -184,6 +457,36 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('settings-modal-close').addEventListener('click', closeSettingsModal);
     document.getElementById('settings-modal-backdrop').addEventListener('click', closeSettingsModal);
     document.getElementById('cancel-settings').addEventListener('click', closeSettingsModal);
+
+    document.getElementById('save-settings').addEventListener('click', () => {
+        const settings = getStageSettings();
+
+        document.querySelectorAll('.time-input[data-setting]').forEach((input) => {
+            const key = input.dataset.setting;
+            if (!key) return;
+
+            // input type="time" → "HH:MM"
+            const value = (input.value || '').trim();
+            settings[key] = value || DEFAULT_STAGE_SETTINGS[key];
+        });
+
+        saveStageSettings(settings);
+
+        // Save login/password
+        const loginInput = document.getElementById('login-input');
+        const passwordInput = document.getElementById('password-input');
+
+        saveAuthCredentials({
+            login: (loginInput?.value || '').trim() || DEFAULT_AUTH.login,
+            password: (passwordInput?.value || '').toString() || DEFAULT_AUTH.password
+        });
+
+        // пока считаем, что выезд из дома
+        applyStageSettingsToUI('home');
+        applyAuthToUI();
+
+        closeSettingsModal();
+    });
 
     document.querySelectorAll('.stage-item').forEach(stage => {
         stage.addEventListener('click', () => openStageModal(stage));
@@ -227,8 +530,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ===== Обновление данных рейса (crewPortalInfo) =====
-    const CREW_PORTAL_LS_KEY = 'crewPortalInfo';
-    const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/test.php?randomDate=false';
 
     async function fetchCrewPortalInfo() {
         const response = await fetch(CREW_PORTAL_TEST_URL, {
@@ -297,7 +598,8 @@ document.addEventListener('DOMContentLoaded', () => {
             iconEl.classList.add('fa-spin');
 
             try {
-                await fetchCrewPortalInfo();
+                const data = await fetchCrewPortalInfo();
+                updateFlightCardFromData(data);
                 withTempIcon(iconEl, 'ok', 1200);
             } catch (err) {
                 console.error('Failed to refresh crew portal info:', err);
