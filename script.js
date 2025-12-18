@@ -190,6 +190,26 @@ function setFlightCardDashes() {
         if (arrCode) arrCode.textContent = '--- / ----';
         if (arrName) arrName.textContent = '------';
     }
+
+    // Reset pilot badge to default work style
+    const badgeEl = flightCard.querySelector('.pilot-badge');
+    const badgeIconEl = badgeEl ? badgeEl.querySelector('i') : null;
+    const badgeTextEl = badgeEl ? badgeEl.querySelector('.pilot-badge-text') : null;
+
+    if (badgeEl) {
+        badgeEl.classList.add('pilot-badge--work');
+        badgeEl.classList.remove('pilot-badge--passenger');
+        badgeEl.title = 'Рабочий рейс';
+    }
+
+    if (badgeIconEl) {
+        badgeIconEl.classList.remove('fa-suitcase-rolling', 'fa-briefcase');
+        badgeIconEl.classList.add('fa-plane');
+    }
+
+    if (badgeTextEl) {
+        badgeTextEl.textContent = 'Рабочий';
+    }
 }
 
 function updateFlightCardFromData(data) {
@@ -208,6 +228,28 @@ function updateFlightCardFromData(data) {
     const flightTimeEl = flightCard.querySelector('.flight-time');
     const flightDateEl = flightCard.querySelector('.flight-date');
     const flightDurationEl = flightCard.querySelector('.flight-duration');
+
+    // Pilot badge update based on data.isWork
+    const badgeEl = flightCard.querySelector('.pilot-badge');
+    const badgeIconEl = badgeEl ? badgeEl.querySelector('i') : null;
+    const badgeTextEl = badgeEl ? badgeEl.querySelector('.pilot-badge-text') : null;
+
+    const isWork = data.isWork === true;
+
+    if (badgeEl) {
+        badgeEl.classList.toggle('pilot-badge--work', isWork);
+        badgeEl.classList.toggle('pilot-badge--passenger', !isWork);
+        badgeEl.title = isWork ? 'Рабочий рейс' : 'Пассажиром';
+    }
+
+    if (badgeIconEl) {
+        badgeIconEl.classList.remove('fa-plane', 'fa-suitcase-rolling', 'fa-briefcase');
+        badgeIconEl.classList.add(isWork ? 'fa-plane' : 'fa-suitcase-rolling');
+    }
+
+    if (badgeTextEl) {
+        badgeTextEl.textContent = isWork ? 'Рабочий' : 'Пасс';
+    }
 
     if (flightNumberEl) {
         const number = (data.number || '').toString().trim();
