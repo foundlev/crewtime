@@ -7,6 +7,15 @@
     --accent-color: #30D158;
     --warning-color: #FF453A;
     --soft-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+
+    /* Status colors (dark theme default) */
+    --status-success: #30D158;
+    --status-error: #FF453A;
+    --status-empty: #8E8E93;
+
+    --status-success-bg: linear-gradient(135deg, #30D158, #2ACB63);
+    --status-error-bg: linear-gradient(135deg, #FF453A, #FF6B5E);
+    --status-empty-bg: linear-gradient(135deg, #8E8E93, #636366);
 }
 
 @media (prefers-color-scheme: light) {
@@ -15,6 +24,15 @@
         --bg-color: #F2F2F7;
         --card-bg: #FFFFFF;
         --border-color: #C6C6C8;
+
+        /* Status colors (light theme) */
+        --status-success: #34C759;
+        --status-error: #FF3B30;
+        --status-empty: #6D6D72;
+
+        --status-success-bg: linear-gradient(135deg, #34C759, #30B954);
+        --status-error-bg: linear-gradient(135deg, #FF3B30, #FF6257);
+        --status-empty-bg: linear-gradient(135deg, #6D6D72, #8E8E93);
     }
 }
 
@@ -97,6 +115,21 @@ body {
     backdrop-filter: blur(10px);
     min-width: 70px;
     text-align: center;
+}
+
+.time-difference--success {
+    background: var(--status-success-bg);
+    box-shadow: 0 4px 15px rgba(48, 209, 88, 0.25);
+}
+
+.time-difference--error {
+    background: var(--status-error-bg);
+    box-shadow: 0 4px 15px rgba(255, 69, 58, 0.25);
+}
+
+.time-difference--empty {
+    background: var(--status-empty-bg);
+    box-shadow: 0 4px 15px rgba(142, 142, 147, 0.22);
 }
 
 .flight-card {

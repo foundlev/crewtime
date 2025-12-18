@@ -254,6 +254,9 @@ function updateFlightCardFromData(data) {
         locationInline.style.boxShadow = '';
     }
 
+    // Refresh time-difference badge state when new data is applied
+    updateTimeDifferenceByDepartureIcao();
+
     const startDateStr = data.startDate;
     const startDate = startDateStr ? new Date(startDateStr) : null;
 
@@ -410,6 +413,98 @@ function calculateTimeDifference(moscowDate, localDate) {
     return `${sign}${hours}:${minutes.toString().padStart(2, '0')}`;
 }
 
+function getTimeZoneOffsetMinutes(timeZone, date) {
+    // Returns offset minutes from UTC for the given IANA timeZone at the given date
+    // Example: Moscow (Europe/Moscow) ~ +180
+    const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+
+    const parts = dtf.formatToParts(date).reduce((acc, part) => {
+        if (part.type !== 'literal') {
+            acc[part.type] = part.value;
+        }
+        return acc;
+    }, {});
+
+    const asUtcMs = Date.UTC(
+        Number(parts.year),
+        Number(parts.month) - 1,
+        Number(parts.day),
+        Number(parts.hour),
+        Number(parts.minute),
+        Number(parts.second)
+    );
+
+    return Math.round((asUtcMs - date.getTime()) / 60000);
+}
+
+function setTimeDifferenceStatus(status, titleText = '') {
+    const el = document.getElementById('time-difference');
+    if (!el) return;
+
+    el.classList.remove('time-difference--success', 'time-difference--error', 'time-difference--empty');
+
+    if (status === 'success') {
+        el.classList.add('time-difference--success');
+    } else if (status === 'error') {
+        el.classList.add('time-difference--error');
+    } else {
+        el.classList.add('time-difference--empty');
+    }
+
+    if (titleText) {
+        el.title = titleText;
+    } else {
+        el.removeAttribute('title');
+    }
+}
+
+function updateTimeDifferenceByDepartureIcao() {
+    const now = new Date();
+    const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+    if (!raw) {
+        setTimeDifferenceStatus('empty', 'Нет данных о рейсе');
+        return;
+    }
+
+    const data = safeParseJson(raw);
+    const depIcao = data && data.departure && data.departure.icao ? data.departure.icao.toString().toUpperCase() : '';
+
+    if (!depIcao) {
+        setTimeDifferenceStatus('empty', 'Не указан ICAO вылета');
+        return;
+    }
+
+    // airports_tz is provided by assets/data/airports_tz.js
+    if (typeof airports_tz === 'undefined' || !airports_tz || typeof airports_tz !== 'object') {
+        setTimeDifferenceStatus('empty', 'Справочник таймзон не загружен');
+        return;
+    }
+
+    const tz = airports_tz[depIcao];
+    if (!tz) {
+        setTimeDifferenceStatus('empty', `Нет таймзоны для ${depIcao}`);
+        return;
+    }
+
+    const deviceOffset = -now.getTimezoneOffset();
+    const depOffset = getTimeZoneOffsetMinutes(tz, now);
+
+    if (deviceOffset === depOffset) {
+        setTimeDifferenceStatus('success', `ОК: устройство совпадает с ${depIcao} (${tz})`);
+    } else {
+        setTimeDifferenceStatus('error', `Не совпадает: устройство ${deviceOffset} мин, ${depIcao} ${depOffset} мин (${tz})`);
+    }
+}
+
 // Функция для расчета времени до следующего этапа
 function calculateNextStageTime() {
     const now = new Date();
@@ -535,6 +630,9 @@ function updateTime() {
         localDateElement.textContent = formatDate(now);
         timeDifferenceElement.textContent = calculateTimeDifference(moscowTime, now);
         nextStageTimeElement.textContent = calculateNextStageTime();
+
+        // Update time-difference badge state after updating text
+        updateTimeDifferenceByDepartureIcao();
 
         moscowTimeElement.classList.remove('updating');
         localTimeElement.classList.remove('updating');
