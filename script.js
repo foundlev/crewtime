@@ -4,6 +4,7 @@ const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/test.php?r
 
 // ===== Настройки этапов (localStorage) =====
 const STAGE_SETTINGS_LS_KEY = 'stageSettings';
+const SLEEP_TOGGLE_LS_KEY = 'sleepEnabled';
 
 const DEFAULT_STAGE_SETTINGS = {
     home_rest: '00:30',
@@ -81,6 +82,42 @@ function getStageSettings() {
 
 function saveStageSettings(settings) {
     localStorage.setItem(STAGE_SETTINGS_LS_KEY, JSON.stringify(settings));
+}
+
+function getSleepEnabled() {
+    const raw = localStorage.getItem(SLEEP_TOGGLE_LS_KEY);
+    if (raw === null) return true; // по умолчанию включено
+    return raw === 'true';
+}
+
+function saveSleepEnabled(enabled) {
+    localStorage.setItem(SLEEP_TOGGLE_LS_KEY, enabled ? 'true' : 'false');
+}
+
+function applySleepEnabledToUI(enabled) {
+    const sleepToggle = document.getElementById('sleep-toggle');
+    if (sleepToggle) sleepToggle.checked = enabled;
+
+    const sleepStages = document.querySelectorAll(
+        '.stage-item[data-stage="rest"], .stage-item[data-stage="sleep"]'
+    );
+    const sleepControls = document.querySelector('.sleep-controls');
+
+    const decreaseButton = document.getElementById('sleep-decrease');
+    const increaseButton = document.getElementById('sleep-increase');
+
+    if (enabled) {
+        sleepStages.forEach((stage) => stage.classList.remove('stage-inactive'));
+        if (sleepControls) sleepControls.classList.remove('sleep-controls--disabled');
+        if (decreaseButton) decreaseButton.disabled = false;
+        if (increaseButton) increaseButton.disabled = false;
+        updateSleepDisplay();
+    } else {
+        sleepStages.forEach((stage) => stage.classList.add('stage-inactive'));
+        if (sleepControls) sleepControls.classList.add('sleep-controls--disabled');
+        if (decreaseButton) decreaseButton.disabled = true;
+        if (increaseButton) increaseButton.disabled = true;
+    }
 }
 
 function timeToPretty(timeStr) {
@@ -186,6 +223,7 @@ function addMinutes(date, minutes) {
 
 function getCurrentContextFromFlightData(data) {
     const depIcao = data && data.departure && data.departure.icao ? data.departure.icao.toString().toUpperCase() : '';
+    if (!depIcao) return 'home';
     return depIcao === 'UUEE' ? 'home' : 'hotel';
 }
 
@@ -287,6 +325,13 @@ function updateStageTimesFromFlight(data) {
         exit: tExit
     };
 
+    lastStageTimeline = {
+        flightStart: startDate,
+        times: map
+    };
+
+    updateNextStageCountdown();
+
     document.querySelectorAll('.stage-item').forEach((el) => {
         const key = el.dataset.stage;
         const timeEl = el.querySelector('.stage-time');
@@ -300,6 +345,113 @@ function updateStageTimesFromFlight(data) {
 
         timeEl.textContent = formatFlightTime(d);
     });
+}
+
+let lastStageTimeline = null;
+
+function formatRemainingMs(ms) {
+    const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+
+    if (days > 0) {
+        return `${days} д ${hours} ч ${minutes.toString().padStart(2, '0')} мин`;
+    }
+
+    return `${hours} ч ${minutes.toString().padStart(2, '0')} мин`;
+}
+
+function setCountdownCard(iconClasses, labelText, timeText) {
+    const iconEl = document.getElementById('next-stage-icon');
+    const labelEl = document.getElementById('next-stage-label');
+    const timeEl = document.getElementById('next-stage-time');
+
+    if (iconEl && Array.isArray(iconClasses)) {
+        iconEl.className = iconClasses.join(' ');
+    }
+    if (labelEl) labelEl.textContent = labelText;
+    if (timeEl) timeEl.textContent = timeText;
+}
+
+function getStageCountdownLabel(stageKey, stageEl) {
+    if (stageKey === 'rest') return 'До отдыха';
+    if (stageKey === 'sleep') return 'До отбоя';
+    if (stageKey === 'wakeup') return 'До подъёма';
+
+    const label = stageEl?.querySelector('.stage-label')?.textContent?.trim() || '';
+
+    if (stageKey === 'taxi') {
+        if (label.toLowerCase() === 'такси') return 'До вызова такси';
+        return label ? `До ${label.toLowerCase()}` : 'До следующего этапа';
+    }
+
+    if (stageKey === 'exit') {
+        return label ? `До ${label.toLowerCase()}` : 'До выхода';
+    }
+
+    return 'До следующего этапа';
+}
+
+function highlightActiveStage(stageKey) {
+    document.querySelectorAll('.stage-item').forEach((el) => {
+        el.classList.toggle('stage-active', stageKey && el.dataset.stage === stageKey);
+    });
+}
+
+function updateNextStageCountdown() {
+    if (!lastStageTimeline || !lastStageTimeline.flightStart) {
+        highlightActiveStage(null);
+        setCountdownCard(['fa-regular', 'fa-hourglass'], 'Загружаем информацию', '- ч -- мин');
+        return;
+    }
+
+    const now = new Date();
+    const sleepEnabled = getSleepEnabled();
+
+    const order = ['rest', 'sleep', 'wakeup', 'taxi', 'exit'];
+    const candidates = order.filter((k) => {
+        if (!sleepEnabled && (k === 'rest' || k === 'sleep')) return false;
+        return true;
+    });
+
+    let nextKey = null;
+    let nextTime = null;
+
+    candidates.forEach((k) => {
+        const t = lastStageTimeline.times?.[k];
+        if (!t || Number.isNaN(t.getTime())) return;
+        if (t.getTime() <= now.getTime()) return;
+
+        if (!nextTime || t.getTime() < nextTime.getTime()) {
+            nextTime = t;
+            nextKey = k;
+        }
+    });
+
+    if (nextKey && nextTime) {
+        const stageEl = document.querySelector(`.stage-item[data-stage="${nextKey}"]`);
+        const stageIconEl = stageEl ? stageEl.querySelector('.stage-icon i') : null;
+
+        const iconClasses = stageIconEl ? stageIconEl.className.split(' ') : ['fa-regular', 'fa-hourglass'];
+        const labelText = getStageCountdownLabel(nextKey, stageEl);
+        const remaining = formatRemainingMs(nextTime.getTime() - now.getTime());
+
+        highlightActiveStage(nextKey);
+        setCountdownCard(iconClasses, labelText, remaining);
+        return;
+    }
+
+    // Все этапы прошли -> показываем до вылета
+    const flightStart = lastStageTimeline.flightStart;
+    if (flightStart && !Number.isNaN(flightStart.getTime()) && flightStart.getTime() > now.getTime()) {
+        highlightActiveStage(null);
+        setCountdownCard(['fas', 'fa-plane-departure'], 'До вылета', formatRemainingMs(flightStart.getTime() - now.getTime()));
+        return;
+    }
+
+    highlightActiveStage(null);
+    setCountdownCard(['fas', 'fa-plane-departure'], 'Вылет уже прошёл', '0 ч 00 мин');
 }
 
 function setFlightCardDashes() {
@@ -332,6 +484,9 @@ function setFlightCardDashes() {
     document.querySelectorAll('.stage-item .stage-time').forEach((el) => {
         el.textContent = '--:--';
     });
+
+    lastStageTimeline = null;
+    updateNextStageCountdown();
 
     // Pilot badge: when there is no data -> show loading style
     const badgeEl = flightCard.querySelector('.pilot-badge');
@@ -648,26 +803,6 @@ function updateTimeDifferenceByDepartureIcao() {
     }
 }
 
-// Функция для расчета времени до следующего этапа
-function calculateNextStageTime() {
-    const now = new Date();
-    const nextStageTime = new Date();
-
-    // Демо: следующий этап - отход ко сну в 22:00 сегодня
-    nextStageTime.setHours(22, 0, 0, 0);
-
-    // Если время уже прошло, берем на завтра
-    if (now > nextStageTime) {
-        nextStageTime.setDate(nextStageTime.getDate() + 1);
-    }
-
-    const diffMs = nextStageTime - now;
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-    return `${hours} ч ${minutes} мин`;
-}
-
 // Управление настройками сна
 let sleepHours = 9;
 let sleepMinutes = 0;
@@ -716,6 +851,7 @@ function changeSleepTime(minutes) {
     } catch {
         // ignore
     }
+    updateNextStageCountdown();
 }
 
 // Управление модальными окнами
@@ -793,7 +929,7 @@ function updateTime() {
         localTimeElement.textContent = formatTime(now);
         localDateElement.textContent = formatDate(now);
         timeDifferenceElement.textContent = calculateTimeDifference(moscowTime, now);
-        nextStageTimeElement.textContent = calculateNextStageTime();
+        updateNextStageCountdown();
 
         // Update time-difference badge state after updating text
         updateTimeDifferenceByDepartureIcao();
@@ -813,13 +949,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
         const data = raw ? safeParseJson(raw) : null;
         updateStageTimesFromFlight(data);
+        updateNextStageCountdown();
     } catch {
         updateStageTimesFromFlight(null);
+        updateNextStageCountdown();
     }
     applyStageSettingsToUI(getCurrentContextFromStorage());
     applyAuthToUI();
 
     // Инициализация настроек сна
+    applySleepEnabledToUI(getSleepEnabled());
     updateSleepDisplay();
 
     const sleepToggleInit = document.getElementById('sleep-toggle');
@@ -888,6 +1027,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Обработчик для переключателя сна
     document.getElementById('sleep-toggle').addEventListener('change', function() {
+        saveSleepEnabled(this.checked);
+
         const sleepStages = document.querySelectorAll('.stage-item[data-stage="rest"], .stage-item[data-stage="sleep"]');
         const sleepControls = document.querySelector('.sleep-controls');
         const decreaseButton = document.getElementById('sleep-decrease');
@@ -909,6 +1050,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (decreaseButton) decreaseButton.disabled = true;
             if (increaseButton) increaseButton.disabled = true;
         }
+
+        updateNextStageCountdown();
     });
 
     // Обработчик для переключения видимости пароля
@@ -998,6 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const data = await fetchCrewPortalInfo();
                 updateFlightCardFromData(data);
+                updateNextStageCountdown();
                 withTempIcon(iconEl, 'ok', 1200);
             } catch (err) {
                 console.error('Failed to refresh crew portal info:', err);
