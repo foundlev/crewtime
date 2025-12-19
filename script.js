@@ -5,6 +5,7 @@ const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/test.php?r
 // ===== Настройки этапов (localStorage) =====
 const STAGE_SETTINGS_LS_KEY = 'stageSettings';
 const SLEEP_TOGGLE_LS_KEY = 'sleepEnabled';
+const STAGE_OVERRIDES_LS_KEY = 'stageOverridesByFlight';
 
 const DEFAULT_STAGE_SETTINGS = {
     home_rest: '00:30',
@@ -21,8 +22,8 @@ const DEFAULT_STAGE_SETTINGS = {
 const AUTH_LS_KEY = 'authCredentials';
 
 const DEFAULT_AUTH = {
-    login: 'demo_user',
-    password: 'password'
+    login: '',
+    password: ''
 };
 
 function getAuthCredentials() {
@@ -221,6 +222,25 @@ function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60000);
 }
 
+const STAGE_MIN_GAP_MINUTES = 5;
+
+function roundToNearest5Minutes(dateObj) {
+    const d = new Date(dateObj.getTime());
+    const m = d.getMinutes();
+    const rounded = Math.round(m / 5) * 5;
+    d.setMinutes(rounded, 0, 0);
+    return d;
+}
+
+function clampStageTime(dateObj) {
+    if (!stageModalState.nextTime) return dateObj;
+
+    const maxAllowed = addMinutes(stageModalState.nextTime, -STAGE_MIN_GAP_MINUTES);
+    if (dateObj.getTime() > maxAllowed.getTime()) return maxAllowed;
+
+    return dateObj;
+}
+
 function getCurrentContextFromFlightData(data) {
     const depIcao = data && data.departure && data.departure.icao ? data.departure.icao.toString().toUpperCase() : '';
     if (!depIcao) return 'home';
@@ -231,6 +251,53 @@ function getCurrentContextFromStorage() {
     const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
     const data = raw ? safeParseJson(raw) : null;
     return getCurrentContextFromFlightData(data);
+}
+
+function getFlightId(data) {
+    if (!data || typeof data !== 'object') return '';
+    const num = (data.number || '').toString().trim();
+    const sd = (data.startDate || '').toString().trim();
+    return `${num}__${sd}`;
+}
+
+function getAllStageOverrides() {
+    const raw = localStorage.getItem(STAGE_OVERRIDES_LS_KEY);
+    const parsed = raw ? safeParseJson(raw) : null;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed;
+}
+
+function getStageOverridesForFlight(data) {
+    const all = getAllStageOverrides();
+    const id = getFlightId(data);
+    const o = id && all[id] && typeof all[id] === 'object' ? all[id] : {};
+    return { ...o };
+}
+
+function saveStageOverrideForFlight(data, stageKey, isoStringOrNull) {
+    const id = getFlightId(data);
+    if (!id) return;
+
+    const all = getAllStageOverrides();
+    const current = all[id] && typeof all[id] === 'object' ? all[id] : {};
+
+    if (isoStringOrNull) {
+        current[stageKey] = isoStringOrNull;
+    } else {
+        delete current[stageKey];
+    }
+
+    all[id] = current;
+    localStorage.setItem(STAGE_OVERRIDES_LS_KEY, JSON.stringify(all));
+}
+
+function markOverriddenStages(data) {
+    const overrides = getStageOverridesForFlight(data);
+    document.querySelectorAll('.stage-item').forEach((el) => {
+        const key = el.dataset.stage;
+        const isEditable = key && key !== 'rest' && key !== 'sleep';
+        el.classList.toggle('stage-overridden', isEditable && !!overrides[key]);
+    });
 }
 
 function applyStageLabelsForContext(context) {
@@ -317,7 +384,7 @@ function updateStageTimesFromFlight(data) {
     const tSleep = addMinutes(tWake, -sleepDurationMin);
     const tRest = addMinutes(tSleep, -restOffsetMin);
 
-    const map = {
+    const baseMap = {
         rest: tRest,
         sleep: tSleep,
         wakeup: tWake,
@@ -325,11 +392,53 @@ function updateStageTimesFromFlight(data) {
         exit: tExit
     };
 
+    // Apply per-flight overrides (local only for the current рейс)
+    const overrides = getStageOverridesForFlight(data);
+    const map = { ...baseMap };
+
+    // Order: apply from поздних к ранним, и пересчитываем только этапы ДО выбранного
+    const editable = ['exit', 'taxi', 'wakeup'];
+
+    editable.forEach((key) => {
+        const iso = overrides[key];
+        if (!iso) return;
+
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return;
+
+        const nextKey = key === 'wakeup' ? 'taxi' : (key === 'taxi' ? 'exit' : null);
+        const nextTime = nextKey ? map[nextKey] : null;
+
+        let edited = d;
+        if (nextTime && edited.getTime() > addMinutes(nextTime, -STAGE_MIN_GAP_MINUTES).getTime()) {
+            edited = addMinutes(nextTime, -STAGE_MIN_GAP_MINUTES);
+        }
+
+        map[key] = edited;
+
+        // Recompute earlier stages based on offsets
+        if (key === 'exit') {
+            map.taxi = addMinutes(map.exit, -taxiOffsetMin);
+            map.wakeup = addMinutes(map.taxi, -wakeupOffsetMin);
+            map.sleep = addMinutes(map.wakeup, -sleepDurationMin);
+            map.rest = addMinutes(map.sleep, -restOffsetMin);
+        } else if (key === 'taxi') {
+            map.wakeup = addMinutes(map.taxi, -wakeupOffsetMin);
+            map.sleep = addMinutes(map.wakeup, -sleepDurationMin);
+            map.rest = addMinutes(map.sleep, -restOffsetMin);
+        } else if (key === 'wakeup') {
+            map.sleep = addMinutes(map.wakeup, -sleepDurationMin);
+            map.rest = addMinutes(map.sleep, -restOffsetMin);
+        }
+    });
+
     lastStageTimeline = {
         flightStart: startDate,
-        times: map
+        times: map,
+        baseTimes: baseMap
     };
 
+    markOverriddenStages(data);
     updateNextStageCountdown();
 
     document.querySelectorAll('.stage-item').forEach((el) => {
@@ -360,6 +469,30 @@ function formatRemainingMs(ms) {
     }
 
     return `${hours} ч ${minutes.toString().padStart(2, '0')} мин`;
+}
+
+function formatUpdatedAgoShort(isoString) {
+    if (!isoString) return '--';
+
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return '--';
+
+    const diffMs = Date.now() - d.getTime();
+    if (diffMs < 60 * 1000) return 'Только что';
+
+    const totalMin = Math.floor(diffMs / 60000);
+    const hours = Math.floor(totalMin / 60);
+
+    if (hours >= 24) {
+        const days = Math.floor(hours / 24);
+        return `${days} д назад`;
+    }
+
+    if (hours >= 1) {
+        return `${hours} ч назад`;
+    }
+
+    return `${totalMin} мин назад`;
 }
 
 function setCountdownCard(iconClasses, labelText, timeText) {
@@ -488,6 +621,8 @@ function setFlightCardDashes() {
     lastStageTimeline = null;
     updateNextStageCountdown();
 
+    document.querySelectorAll('.stage-item').forEach((el) => el.classList.remove('stage-overridden'));
+
     // Pilot badge: when there is no data -> show loading style
     const badgeEl = flightCard.querySelector('.pilot-badge');
     const badgeIconEl = badgeEl ? badgeEl.querySelector('i') : null;
@@ -533,6 +668,21 @@ function setFlightCardDashes() {
     if (locationTextEl) {
         locationTextEl.textContent = '--';
     }
+
+    const sourceText = document.getElementById('data-source-text');
+    if (sourceText) sourceText.textContent = 'Аккорд';
+
+    setWebTimeBadge('empty', 'Web: нет данных', ['fas', 'fa-circle-question']);
+
+    const updatedText = document.getElementById('updated-text');
+    if (updatedText) updatedText.textContent = '--';
+
+    const details = document.getElementById('web-time-details');
+    const webDt = document.getElementById('web-start-datetime');
+    const deltaEl = document.getElementById('web-start-delta');
+    if (details) details.style.display = 'none';
+    if (webDt) webDt.textContent = '--:--, -- --- ----';
+    if (deltaEl) deltaEl.textContent = '--';
 }
 
 function updateFlightCardFromData(data) {
@@ -625,6 +775,31 @@ function updateFlightCardFromData(data) {
         flightDurationEl.textContent = formatDuration(data.duration);
     }
 
+    // Источник данных (пока фикс)
+    const sourceText = document.getElementById('data-source-text');
+    if (sourceText) sourceText.textContent = 'Аккорд';
+
+    // Сверка времени (startDate vs startDateWeb) — кратко в бейдже
+    const startDateWebStr = data.startDateWeb;
+    const startDateWeb = startDateWebStr ? new Date(startDateWebStr) : null;
+
+    if (!startDateWebStr || !startDateWeb || Number.isNaN(startDateWeb.getTime())) {
+        setWebTimeBadge('empty', 'Web', ['fas', 'fa-circle-question']);
+    } else if (startDate && !Number.isNaN(startDate.getTime()) && startDateWeb.getTime() === startDate.getTime()) {
+        setWebTimeBadge('success', 'Web', ['fas', 'fa-check']);
+    } else if (startDate && !Number.isNaN(startDate.getTime())) {
+        const deltaMinutes = Math.round((startDateWeb.getTime() - startDate.getTime()) / 60000);
+        const signed = formatSignedDeltaMinutes(deltaMinutes); // "+2:00" / "−1:30"
+
+        // Пишем прямо в бейдже: "Web (−2:00)"
+        setWebTimeBadge('warning', `Web`, ['fas', 'fa-triangle-exclamation']);
+    } else {
+        setWebTimeBadge('warning', 'Web', ['fas', 'fa-triangle-exclamation']);
+    }
+
+    const updatedText = document.getElementById('updated-text');
+    if (updatedText) updatedText.textContent = formatUpdatedAgoShort(data._updatedAt);
+
     const airports = flightCard.querySelectorAll('.flight-route .airport');
     if (airports.length >= 2) {
         const dep = data.departure || {};
@@ -691,6 +866,34 @@ function formatDate(date) {
         year: 'numeric'
     };
     return date.toLocaleDateString('ru-RU', options).replace(' г.', '');
+}
+
+function setWebTimeBadge(state, text, iconClasses) {
+    const badge = document.getElementById('web-time-badge');
+    const textEl = document.getElementById('web-time-text');
+    const iconEl = badge ? badge.querySelector('i') : null;
+    if (!badge || !textEl || !iconEl) return;
+
+    badge.classList.remove('meta-badge--success', 'meta-badge--error', 'meta-badge--warning', 'meta-badge--empty');
+    badge.classList.add(
+        state === 'success' ? 'meta-badge--success'
+        : state === 'warning' ? 'meta-badge--warning'
+        : state === 'error' ? 'meta-badge--error'
+        : 'meta-badge--empty'
+    );
+
+    textEl.textContent = text;
+
+    iconEl.className = '';
+    iconClasses.forEach(c => iconEl.classList.add(c));
+}
+
+function formatSignedDeltaMinutes(deltaMinutes) {
+    const sign = deltaMinutes >= 0 ? '+' : '−';
+    const abs = Math.abs(deltaMinutes);
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    return `${sign}${h}:${m.toString().padStart(2, '0')}`;
 }
 
 // Функция для вычисления разницы во времени с поддержкой минутных смещений (например, +3:30)
@@ -865,30 +1068,115 @@ function closeSettingsModal() {
     document.getElementById('settings-modal').style.display = 'none';
 }
 
+let stageModalState = {
+    flightData: null,
+    stageKey: null,
+    baseTime: null,
+    currentTime: null,
+    nextKey: null,
+    nextTime: null
+};
+
+function stageTitleByKey(stageKey, stageEl) {
+    const label = stageEl?.querySelector('.stage-label')?.textContent?.trim() || '';
+    if (stageKey === 'wakeup') return 'Время подъёма';
+    if (stageKey === 'taxi') {
+        if (label.toLowerCase() === 'такси') return 'Время такси';
+        return `Время ${label.toLowerCase()}`;
+    }
+    if (stageKey === 'exit') {
+        return `Время ${label ? label.toLowerCase() : 'выхода'}`;
+    }
+    return 'Редактирование этапа';
+}
+
+function nextLabelByKey(nextKey, nextStageEl) {
+    if (!nextKey) return 'До вылета:';
+
+    // Используем уже готовые формулировки как в countdown-card
+    const label = getStageCountdownLabel(nextKey, nextStageEl); // например "До вызова такси"
+    return `${label}:`;
+}
+
+function setStageModalTime(dateObj) {
+    stageModalState.currentTime = dateObj;
+
+    const input = document.getElementById('modal-time-input');
+    if (input) input.value = formatFlightTime(dateObj);
+
+    const nextEl = document.getElementById('modal-next-stage');
+    if (nextEl && stageModalState.nextTime) {
+        const ms = stageModalState.nextTime.getTime() - dateObj.getTime();
+        nextEl.textContent = formatRemainingMs(ms);
+    }
+}
+
 function openStageModal(stageElement) {
-    const stageType = stageElement.dataset.stage;
-    const stageTime = stageElement.querySelector('.stage-time').textContent;
+    const stageKey = stageElement.dataset.stage;
+
+    // Не редактируем: отдых и отбой
+    if (!stageKey || stageKey === 'rest' || stageKey === 'sleep') return;
+
+    const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+    const flightData = raw ? safeParseJson(raw) : null;
+    if (!flightData) return;
+
+    // Гарантируем, что таймлайн актуален
+    updateStageTimesFromFlight(flightData);
+
     const modal = document.getElementById('stage-modal');
     const modalTitle = document.getElementById('modal-stage-title');
-    const modalTimeValue = document.getElementById('modal-time-value');
+    const calcEl = document.getElementById('modal-calculated-time');
+    const nextLabelEl = document.getElementById('modal-next-stage-label');
 
-    // Устанавливаем заголовок в зависимости от типа этапа
-    const stageTitles = {
-        'rest': 'Редактирование отдыха',
-        'sleep': 'Редактирование отбоя',
-        'wakeup': 'Редактирование подъёма',
-        'taxi': 'Редактирование такси',
-        'exit': 'Редактирование выхода'
+    const times = lastStageTimeline?.times || null;
+    const baseTimes = lastStageTimeline?.baseTimes || null;
+
+    const baseTime = baseTimes?.[stageKey];
+    const currentTime = times?.[stageKey];
+
+    const nextKey = stageKey === 'wakeup' ? 'taxi' : (stageKey === 'taxi' ? 'exit' : null);
+
+    // Если следующего этапа нет (последний этап) — считаем до вылета
+    const nextTime = nextKey ? times?.[nextKey] : lastStageTimeline?.flightStart || null;
+
+    if (!currentTime || Number.isNaN(currentTime.getTime())) return;
+
+    stageModalState = {
+        flightData,
+        stageKey,
+        baseTime: baseTime && !Number.isNaN(baseTime.getTime()) ? baseTime : currentTime,
+        currentTime,
+        nextKey,
+        nextTime: nextTime && !Number.isNaN(nextTime.getTime()) ? nextTime : null
     };
 
-    modalTitle.textContent = stageTitles[stageType] || 'Редактирование этапа';
-    modalTimeValue.textContent = stageTime;
+    if (modalTitle) modalTitle.textContent = stageTitleByKey(stageKey, stageElement);
+    if (calcEl) calcEl.textContent = stageModalState.baseTime ? formatFlightTime(stageModalState.baseTime) : '--:--';
 
-    modal.style.display = 'flex';
+    if (nextLabelEl) {
+        if (!nextKey) {
+            nextLabelEl.textContent = 'До вылета:';
+        } else {
+            const nextStageEl = document.querySelector(`.stage-item[data-stage="${nextKey}"]`);
+            nextLabelEl.textContent = nextLabelByKey(nextKey, nextStageEl);
+        }
+    }
+
+    // Показать текущее время (с clamp)
+    setStageModalTime(clampStageTime(new Date(stageModalState.currentTime.getTime())));
+
+    // input скрыт при открытии
+    const input = document.getElementById('modal-time-input');
+    const btn = document.getElementById('modal-time-value');
+    if (btn) btn.style.display = 'flex';
+
+    if (modal) modal.style.display = 'flex';
 }
 
 function closeStageModal() {
-    document.getElementById('stage-modal').style.display = 'none';
+    const modal = document.getElementById('stage-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 function openFlightModal() {
@@ -1021,6 +1309,83 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('stage-modal-close').addEventListener('click', closeStageModal);
     document.getElementById('stage-modal-backdrop').addEventListener('click', closeStageModal);
 
+    // ===== Stage modal controls (per-flight overrides) =====
+    const modalMinus = document.getElementById('time-decrease');
+    const modalPlus = document.getElementById('time-increase');
+    const modalTimeInput = document.getElementById('modal-time-input');
+    const modalReset = document.getElementById('reset-time');
+    const modalSave = document.getElementById('save-time');
+
+    function applyModalTimeAndRefresh(dateObj) {
+        const rounded = roundToNearest5Minutes(dateObj);
+        const clamped = clampStageTime(rounded);
+        setStageModalTime(clamped);
+    }
+
+    if (modalMinus) {
+        modalMinus.addEventListener('click', () => {
+            if (!stageModalState.currentTime) return;
+            applyModalTimeAndRefresh(addMinutes(stageModalState.currentTime, -5));
+        });
+    }
+
+    if (modalPlus) {
+        modalPlus.addEventListener('click', () => {
+            if (!stageModalState.currentTime) return;
+            applyModalTimeAndRefresh(addMinutes(stageModalState.currentTime, 5));
+        });
+    }
+
+    // Tap time -> show input
+    if (modalTimeInput) {
+        modalTimeInput.addEventListener('change', () => {
+            if (!stageModalState.currentTime) return;
+
+            const v = (modalTimeInput.value || '').trim();
+            if (!v.includes(':')) return;
+
+            const [hh, mm] = v.split(':');
+            const h = Number.parseInt(hh, 10);
+            const m = Number.parseInt(mm, 10);
+            if (Number.isNaN(h) || Number.isNaN(m)) return;
+
+            const d = new Date(stageModalState.currentTime.getTime());
+            d.setHours(h, m, 0, 0);
+
+            // Ввод руками: тоже clamp (и по желанию можно округлять)
+            setStageModalTime(clampStageTime(d));
+        });
+    }
+
+    if (modalReset) {
+        modalReset.addEventListener('click', () => {
+            if (!stageModalState.baseTime) return;
+            applyModalTimeAndRefresh(new Date(stageModalState.baseTime.getTime()));
+        });
+    }
+
+    if (modalSave) {
+        modalSave.addEventListener('click', () => {
+            if (!stageModalState.flightData || !stageModalState.stageKey || !stageModalState.currentTime) {
+                closeStageModal();
+                return;
+            }
+
+            const sameAsBase = stageModalState.baseTime
+                && (stageModalState.currentTime.getTime() === stageModalState.baseTime.getTime());
+
+            if (sameAsBase) {
+                saveStageOverrideForFlight(stageModalState.flightData, stageModalState.stageKey, null);
+            } else {
+                saveStageOverrideForFlight(stageModalState.flightData, stageModalState.stageKey, stageModalState.currentTime.toISOString());
+            }
+
+            updateStageTimesFromFlight(stageModalState.flightData);
+            updateNextStageCountdown();
+            closeStageModal();
+        });
+    }
+
     document.getElementById('flight-card').addEventListener('click', openFlightModal);
     document.getElementById('flight-modal-close').addEventListener('click', closeFlightModal);
     document.getElementById('flight-modal-backdrop').addEventListener('click', closeFlightModal);
@@ -1098,6 +1463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Сохраняем ТОЛЬКО data
+        json.data._updatedAt = new Date().toISOString();
         localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(json.data));
 
         return json.data;

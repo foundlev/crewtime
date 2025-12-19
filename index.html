@@ -68,6 +68,26 @@
                     <div class="airport-name">------</div>
                 </div>
             </div>
+
+            <div class="flight-meta" id="flight-meta">
+                <div class="flight-meta-badges">
+                    <div class="meta-badge meta-badge--source" id="data-source-badge" title="Источник данных">
+                        <i class="fas fa-database"></i>
+                        <span id="data-source-text">Crew Портал</span>
+                    </div>
+
+                    <div class="meta-badge meta-badge--empty" id="web-time-badge" title="Сверка времени с Web">
+                        <i class="fas fa-circle-question"></i>
+                        <span id="web-time-text">Web: нет данных</span>
+                    </div>
+
+                    <div class="meta-badge meta-badge--empty" id="updated-badge" title="Когда обновляли данные">
+                        <i class="fas fa-clock"></i>
+                        <span id="updated-text">--</span>
+                    </div>
+                </div>
+
+            </div>
         </div>
 
         <div class="countdown-card">
@@ -229,18 +249,26 @@
                 <button class="modal-close" id="stage-modal-close">&times;</button>
             </div>
             <div class="modal-time-controls">
-                <button class="modal-time-button" id="time-decrease">
+                <button class="modal-time-button" id="time-decrease" title="Минус 5 минут">
                     <i class="fas fa-minus"></i>
                 </button>
-                <div class="modal-time-value" id="modal-time-value">06:40</div>
-                <button class="modal-time-button" id="time-increase">
+
+                <input type="time" class="time-input modal-time-picker" id="modal-time-input" step="60" />
+
+                <button class="modal-time-button" id="time-increase" title="Плюс 5 минут">
                     <i class="fas fa-plus"></i>
                 </button>
             </div>
+
+            <div class="modal-subinfo">
+                <div class="modal-subinfo-label">Рассчитанное:</div>
+                <div class="modal-subinfo-value" id="modal-calculated-time">--:--</div>
+            </div>
+
             <div class="modal-info">
                 <div class="modal-info-item">
-                    <span>До следующего этапа:</span>
-                    <span id="modal-next-stage">1 ч 10 мин</span>
+                    <span id="modal-next-stage-label">До следующего этапа:</span>
+                    <span id="modal-next-stage">- ч -- мин</span>
                 </div>
             </div>
             <div class="modal-actions">
