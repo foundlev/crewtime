@@ -672,7 +672,7 @@ function setFlightCardDashes() {
     const sourceText = document.getElementById('data-source-text');
     if (sourceText) sourceText.textContent = 'Аккорд';
 
-    setWebTimeBadge('empty', 'Web: нет данных', ['fas', 'fa-circle-question']);
+    setWebTimeBadge('empty', 'AFL WEB: нет данных', ['fas', 'fa-circle-question']);
 
     const updatedText = document.getElementById('updated-text');
     if (updatedText) updatedText.textContent = '--';
@@ -784,17 +784,17 @@ function updateFlightCardFromData(data) {
     const startDateWeb = startDateWebStr ? new Date(startDateWebStr) : null;
 
     if (!startDateWebStr || !startDateWeb || Number.isNaN(startDateWeb.getTime())) {
-        setWebTimeBadge('empty', 'Web', ['fas', 'fa-circle-question']);
+        setWebTimeBadge('empty', 'AFL WEB', ['fas', 'fa-circle-question']);
     } else if (startDate && !Number.isNaN(startDate.getTime()) && startDateWeb.getTime() === startDate.getTime()) {
-        setWebTimeBadge('success', 'Web', ['fas', 'fa-check']);
+        setWebTimeBadge('success', 'AFL WEB', ['fas', 'fa-check']);
     } else if (startDate && !Number.isNaN(startDate.getTime())) {
         const deltaMinutes = Math.round((startDateWeb.getTime() - startDate.getTime()) / 60000);
         const signed = formatSignedDeltaMinutes(deltaMinutes); // "+2:00" / "−1:30"
 
-        // Пишем прямо в бейдже: "Web (−2:00)"
-        setWebTimeBadge('warning', `Web`, ['fas', 'fa-triangle-exclamation']);
+        // Пишем прямо в бейдже: "AFL WEB (−2:00)"
+        setWebTimeBadge('warning', `AFL WEB`, ['fas', 'fa-triangle-exclamation']);
     } else {
-        setWebTimeBadge('warning', 'Web', ['fas', 'fa-triangle-exclamation']);
+        setWebTimeBadge('warning', 'AFL WEB', ['fas', 'fa-triangle-exclamation']);
     }
 
     const updatedText = document.getElementById('updated-text');
