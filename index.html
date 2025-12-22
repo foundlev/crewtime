@@ -287,18 +287,31 @@
                 <button class="modal-close" id="flight-modal-close">&times;</button>
             </div>
             <div style="margin-bottom: 20px;">
-                <div style="font-size: 24px; font-weight: 700; color: var(--primary-color); margin-bottom: 8px;">SU 1004</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <div id="modal-flight-number" style="font-size: 24px; font-weight: 700; color: var(--primary-color);">SU 1004</div>
+                    <div id="modal-flight-duration" style="font-size: 14px; font-weight: 600; color: var(--primary-color); background: rgba(0, 122, 255, 0.1); padding: 4px 10px; border-radius: 8px; margin-top: 4px;">-- ч -- мин</div>
+                </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
-                    <div>
-                        <div style="font-size: 18px; font-weight: 600;">SVO / UUEE</div>
-                        <div style="font-size: 14px; opacity: 0.7;">Шереметьево</div>
+                    <div style="flex: 1;">
+                        <div id="modal-dep-codes" style="font-size: 18px; font-weight: 600;">SVO / UUEE</div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <div id="modal-dep-city" style="font-size: 14px; opacity: 0.7;">Шереметьево</div>
+                            <div style="display: flex;">
+                                <div id="modal-dep-tz" class="tz-offset-pill" style="display: none;">МСК+1</div>
+                            </div>
+                        </div>
                     </div>
-                    <div style="text-align: center;">
+                    <div style="text-align: center; padding: 0 10px; margin-top: 2px;">
                         <i class="fas fa-long-arrow-alt-right" style="color: var(--primary-color); font-size: 18px;"></i>
                     </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 18px; font-weight: 600;">KGD / UMKK</div>
-                        <div style="font-size: 14px; opacity: 0.7;">Калининград</div>
+                    <div style="text-align: right; flex: 1;">
+                        <div id="modal-arr-codes" style="font-size: 18px; font-weight: 600;">KGD / UMKK</div>
+                        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+                            <div id="modal-arr-city" style="font-size: 14px; opacity: 0.7;">Калининград</div>
+                            <div style="display: flex;">
+                                <div id="modal-arr-tz" class="tz-offset-pill" style="display: none;">МСК-1</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

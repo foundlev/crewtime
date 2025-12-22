@@ -1080,6 +1080,17 @@ body {
     opacity: 0.8;
 }
 
+.tz-offset-pill {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(142, 142, 147, 0.15);
+    color: var(--text-color);
+    opacity: 0.9;
+    margin: 7px 15px 0 15px;
+}
+
 /* Анимация для плавного обновления времени */
 @keyframes softUpdate {
     0% { opacity: 1; transform: translateY(0); }

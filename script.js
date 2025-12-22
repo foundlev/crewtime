@@ -179,12 +179,10 @@ function formatFlightTime(date) {
 }
 
 function formatFlightDate(date) {
-    const options = {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    };
-    return date.toLocaleDateString('ru-RU', options).replace(' г.', '');
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear().toString().slice(-2);
+    return `${d}.${m}.${y}`;
 }
 
 function formatDuration(durationStr) {
@@ -731,7 +729,7 @@ function setFlightCardDashes() {
     const sourceText = document.getElementById('data-source-text');
     if (sourceText) sourceText.textContent = 'Аккорд';
 
-    setWebTimeBadge('empty', 'WEB: нет данных', ['fas', 'fa-circle-question']);
+    setWebTimeBadge('empty', 'WEB: -', ['fas', 'fa-circle-question']);
 
     const updatedText = document.getElementById('updated-text');
     if (updatedText) updatedText.textContent = '--';
@@ -855,17 +853,22 @@ function updateFlightCardFromData(data) {
     const startDateWeb = startDateWebStr ? new Date(startDateWebStr) : null;
 
     if (!startDateWebStr || !startDateWeb || Number.isNaN(startDateWeb.getTime())) {
-        setWebTimeBadge('empty', 'WEB: нет данных', ['fas', 'fa-circle-question']);
-    } else if (startDate && !Number.isNaN(startDate.getTime()) && startDateWeb.getTime() === startDate.getTime()) {
-        setWebTimeBadge('success', 'WEB', ['fas', 'fa-check']);
-    } else if (startDate && !Number.isNaN(startDate.getTime())) {
-        const deltaMinutes = Math.round((startDateWeb.getTime() - startDate.getTime()) / 60000);
-        const signed = formatSignedDeltaMinutes(deltaMinutes); // "+2:00" / "−1:30"
-
-        // Пишем прямо в бейдже: "WEB (−2:00)"
-        setWebTimeBadge('warning', `WEB`, ['fas', 'fa-triangle-exclamation']);
+        setWebTimeBadge('empty', 'WEB: -', ['fas', 'fa-circle-question']);
     } else {
-        setWebTimeBadge('warning', 'WEB', ['fas', 'fa-triangle-exclamation']);
+        const webFlightNum = (data.sources?.web?.number || '').toString().trim();
+        const webDepIcao = (data.sources?.web?.departure?.icao || '').toString().trim().toUpperCase();
+        const mainFlightNum = (mainData.number || '').toString().trim();
+        const mainDepIcao = (mainData.departure?.icao || '').toString().trim().toUpperCase();
+        
+        const isTimeMatch = startDate && !Number.isNaN(startDate.getTime()) && startDateWeb.getTime() === startDate.getTime();
+        const isNumMatch = webFlightNum === mainFlightNum;
+        const isIcaoMatch = webDepIcao === mainDepIcao;
+
+        if (isTimeMatch && isNumMatch && isIcaoMatch) {
+            setWebTimeBadge('success', 'WEB', ['fas', 'fa-check']);
+        } else {
+            setWebTimeBadge('warning', 'WEB', ['fas', 'fa-triangle-exclamation']);
+        }
     }
 
     const updatedText = document.getElementById('updated-text');
@@ -931,12 +934,10 @@ function formatTime(date) {
 }
 
 function formatDate(date) {
-    const options = {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-    };
-    return date.toLocaleDateString('ru-RU', options).replace(' г.', '');
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear().toString().slice(-2);
+    return `${d}.${m}.${y}`;
 }
 
 function setWebTimeBadge(state, text, iconClasses) {
@@ -1048,7 +1049,8 @@ function updateTimeDifferenceByDepartureIcao() {
     }
 
     const data = safeParseJson(raw);
-    const depIcao = data && data.departure && data.departure.icao ? data.departure.icao.toString().toUpperCase() : '';
+    const mainData = getMainDataFromRoot(data);
+    const depIcao = mainData && mainData.departure && mainData.departure.icao ? mainData.departure.icao.toString().toUpperCase() : '';
 
     if (!depIcao) {
         setTimeDifferenceStatus('empty', 'Не указан ICAO вылета');
@@ -1270,6 +1272,23 @@ function updateDataSourceBadge(source) {
     }
 }
 
+function getGmtOffsetVsMoscow(icao, date) {
+    if (!icao || !date || typeof airports_tz === 'undefined') return null;
+    const tz = airports_tz[icao.toString().toUpperCase()];
+    if (!tz) return null;
+
+    const moscowTz = 'Europe/Moscow';
+    const moscowOffset = getTimeZoneOffsetMinutes(moscowTz, date);
+    const targetOffset = getTimeZoneOffsetMinutes(tz, date);
+
+    const diffMinutes = targetOffset - moscowOffset;
+    if (diffMinutes === 0) return 'МСК';
+
+    const diffHours = diffMinutes / 60;
+    const sign = diffHours > 0 ? '+' : '';
+    return `МСК${sign}${diffHours}`;
+}
+
 function openFlightModal() {
     const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
     const data = raw ? safeParseJson(raw) : null;
@@ -1279,23 +1298,53 @@ function openFlightModal() {
         const mainData = getMainDataFromRoot(data);
         
         // Обновляем заголовок в модалке (номер рейса)
-        const modalTitle = document.querySelector('#flight-modal [style*="font-size: 24px"]');
-        if (modalTitle) {
-            modalTitle.textContent = (mainData && mainData.number) ? mainData.number : 'SU ----';
+        const modalFlightNumber = document.getElementById('modal-flight-number');
+        if (modalFlightNumber) {
+            modalFlightNumber.textContent = (mainData && mainData.number) ? mainData.number : 'SU ----';
+        }
+
+        // Обновляем длительность
+        const modalDuration = document.getElementById('modal-flight-duration');
+        if (modalDuration) {
+            modalDuration.textContent = mainData && mainData.duration ? formatDuration(mainData.duration) : '-- ч -- мин';
         }
         
-        // Обновляем аэропорты
+        // Обновляем аэропорты и смещения
         if (mainData && mainData.departure && mainData.arrival) {
-            const depNodes = document.querySelectorAll('#flight-modal div[style*="font-size: 18px"]');
-            const cityNodes = document.querySelectorAll('#flight-modal div[style*="font-size: 14px"]');
+            const depCodes = document.getElementById('modal-dep-codes');
+            const arrCodes = document.getElementById('modal-arr-codes');
+            const depCity = document.getElementById('modal-dep-city');
+            const arrCity = document.getElementById('modal-arr-city');
+            const depTz = document.getElementById('modal-dep-tz');
+            const arrTz = document.getElementById('modal-arr-tz');
+
+            const flightDate = mainData.startDate ? new Date(mainData.startDate) : new Date();
+
+            if (depCodes) depCodes.textContent = `${mainData.departure.iata || '---'} / ${mainData.departure.icao || '----'}`;
+            if (arrCodes) arrCodes.textContent = `${mainData.arrival.iata || '---'} / ${mainData.arrival.icao || '----'}`;
             
-            if (depNodes.length >= 2) {
-                depNodes[0].textContent = `${mainData.departure.iata || '---'} / ${mainData.departure.icao || '----'}`;
-                depNodes[1].textContent = `${mainData.arrival.iata || '---'} / ${mainData.arrival.icao || '----'}`;
+            if (depCity) depCity.textContent = mainData.departure.city || '------';
+            if (arrCity) arrCity.textContent = mainData.arrival.city || '------';
+
+            // Смещения часовых поясов
+            const depOffsetStr = getGmtOffsetVsMoscow(mainData.departure.icao, flightDate);
+            const arrOffsetStr = getGmtOffsetVsMoscow(mainData.arrival.icao, flightDate);
+
+            if (depTz) {
+                if (depOffsetStr) {
+                    depTz.textContent = depOffsetStr;
+                    depTz.style.display = 'block';
+                } else {
+                    depTz.style.display = 'none';
+                }
             }
-            if (cityNodes.length >= 2) {
-                cityNodes[0].textContent = mainData.departure.city || '------';
-                cityNodes[1].textContent = mainData.arrival.city || '------';
+            if (arrTz) {
+                if (arrOffsetStr) {
+                    arrTz.textContent = arrOffsetStr;
+                    arrTz.style.display = 'block';
+                } else {
+                    arrTz.style.display = 'none';
+                }
             }
         }
 
@@ -1319,6 +1368,8 @@ function openFlightModal() {
 
             const activeSourceData = sourcesData.find(s => s.id === currentSource)?.data;
             const activeStartTime = activeSourceData?.startDate ? new Date(activeSourceData.startDate).getTime() : null;
+            const activeFlightNum = (activeSourceData?.number || '').toString().trim();
+            const activeDepIcao = (activeSourceData?.departure?.icao || '').toString().trim().toUpperCase();
 
             sortedSources.forEach(source => {
                 const itemEl = document.createElement('div');
@@ -1335,7 +1386,14 @@ function openFlightModal() {
                 let statusHtml = '';
                 if (hasData && source.id !== currentSource && activeStartTime) {
                     const sTime = new Date(sData.startDate).getTime();
-                    if (sTime === activeStartTime) {
+                    const sNum = (sData.number || '').toString().trim();
+                    const sDepIcao = (sData.departure?.icao || '').toString().trim().toUpperCase();
+
+                    const isTimeMatch = sTime === activeStartTime;
+                    const isNumMatch = sNum === activeFlightNum;
+                    const isIcaoMatch = sDepIcao === activeDepIcao;
+
+                    if (isTimeMatch && isNumMatch && isIcaoMatch) {
                         itemEl.classList.add('modal-source-item--match');
                         statusHtml = '<i class="fas fa-check-circle" style="color: var(--status-success)"></i>';
                     } else {
@@ -1346,6 +1404,11 @@ function openFlightModal() {
 
                 const timeStr = hasData ? `${formatFlightTime(new Date(sData.startDate))}, ${formatFlightDate(new Date(sData.startDate))}` : 'нет данных';
                 const flightNum = (sData && sData.number) ? sData.number : '----';
+                const routeStr = (hasData && sData.departure?.icao && sData.arrival?.icao) 
+                    ? `${sData.departure.icao}-${sData.arrival.icao}` 
+                    : '';
+
+                const combinedTimeStr = routeStr ? `${routeStr}, ${timeStr}` : timeStr;
 
                 itemEl.innerHTML = `
                     <div class="modal-source-header">
@@ -1356,7 +1419,7 @@ function openFlightModal() {
                     </div>
                     <div class="modal-source-details">
                         <div class="modal-source-flight">${flightNum}</div>
-                        <div class="modal-source-time">${timeStr}</div>
+                        <div class="modal-source-time">${combinedTimeStr}</div>
                     </div>
                 `;
                 sourcesListEl.appendChild(itemEl);
