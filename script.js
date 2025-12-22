@@ -242,7 +242,14 @@ function clampStageTime(dateObj) {
 }
 
 function getCurrentContextFromFlightData(data) {
-    const depIcao = data && data.departure && data.departure.icao ? data.departure.icao.toString().toUpperCase() : '';
+    if (!data) return 'home';
+
+    let d = data;
+    if (data.sources && data.sources.accord) {
+        d = data.sources.accord;
+    }
+
+    const depIcao = d && d.departure && d.departure.icao ? d.departure.icao.toString().toUpperCase() : '';
     if (!depIcao) return 'home';
     return depIcao === 'UUEE' ? 'home' : 'hotel';
 }
@@ -255,8 +262,14 @@ function getCurrentContextFromStorage() {
 
 function getFlightId(data) {
     if (!data || typeof data !== 'object') return '';
-    const num = (data.number || '').toString().trim();
-    const sd = (data.startDate || '').toString().trim();
+
+    let d = data;
+    if (data.sources && data.sources.accord) {
+        d = data.sources.accord;
+    }
+
+    const num = (d.number || '').toString().trim();
+    const sd = (d.startDate || '').toString().trim();
     return `${num}__${sd}`;
 }
 
@@ -347,7 +360,7 @@ function updateStageTimesFromFlight(data) {
     const stages = document.querySelectorAll('.stage-item');
     if (!stages.length) return;
 
-    if (!data || typeof data !== 'object' || !data.startDate) {
+    if (!data || typeof data !== 'object') {
         stages.forEach((el) => {
             const timeEl = el.querySelector('.stage-time');
             if (timeEl) timeEl.textContent = '--:--';
@@ -355,7 +368,20 @@ function updateStageTimesFromFlight(data) {
         return;
     }
 
-    const startDate = new Date(data.startDate);
+    let d = data;
+    if (data.sources && data.sources.accord) {
+        d = data.sources.accord;
+    }
+
+    if (!d.startDate) {
+        stages.forEach((el) => {
+            const timeEl = el.querySelector('.stage-time');
+            if (timeEl) timeEl.textContent = '--:--';
+        });
+        return;
+    }
+
+    const startDate = new Date(d.startDate);
     if (Number.isNaN(startDate.getTime())) {
         stages.forEach((el) => {
             const timeEl = el.querySelector('.stage-time');
@@ -403,13 +429,13 @@ function updateStageTimesFromFlight(data) {
         const iso = overrides[key];
         if (!iso) return;
 
-        const d = new Date(iso);
-        if (Number.isNaN(d.getTime())) return;
+        const dTime = new Date(iso);
+        if (Number.isNaN(dTime.getTime())) return;
 
         const nextKey = key === 'wakeup' ? 'taxi' : (key === 'taxi' ? 'exit' : null);
         const nextTime = nextKey ? map[nextKey] : null;
 
-        let edited = d;
+        let edited = dTime;
         if (nextTime && edited.getTime() > addMinutes(nextTime, -STAGE_MIN_GAP_MINUTES).getTime()) {
             edited = addMinutes(nextTime, -STAGE_MIN_GAP_MINUTES);
         }
@@ -446,13 +472,13 @@ function updateStageTimesFromFlight(data) {
         const timeEl = el.querySelector('.stage-time');
         if (!timeEl) return;
 
-        const d = map[key];
-        if (!d || Number.isNaN(d.getTime())) {
+        const dateVal = map[key];
+        if (!dateVal || Number.isNaN(dateVal.getTime())) {
             timeEl.textContent = '--:--';
             return;
         }
 
-        timeEl.textContent = formatFlightTime(d);
+        timeEl.textContent = formatFlightTime(dateVal);
     });
 }
 
@@ -707,6 +733,23 @@ function updateFlightCardFromData(data) {
         return;
     }
 
+    // Обработка новой структуры данных от сервера
+    let mainData = data;
+    let webStartDateStr = data.startDateWeb;
+
+    if (data.sources) {
+        if (data.sources.accord) {
+            mainData = data.sources.accord;
+            // Сохраняем _updatedAt из корня, если его нет в accord
+            if (!mainData._updatedAt && data._updatedAt) {
+                mainData._updatedAt = data._updatedAt;
+            }
+        }
+        if (data.sources.web && data.sources.web.startDate) {
+            webStartDateStr = data.sources.web.startDate;
+        }
+    }
+
     // Clear inline loading styles (setFlightCardDashes uses inline background/shadow)
     const locationInline = flightCard.querySelector('.location-badge');
     if (locationInline) {
@@ -717,21 +760,21 @@ function updateFlightCardFromData(data) {
     // Refresh time-difference badge state when new data is applied
     updateTimeDifferenceByDepartureIcao();
 
-    const startDateStr = data.startDate;
+    const startDateStr = mainData.startDate;
     const startDate = startDateStr ? new Date(startDateStr) : null;
-    updateStageTimesFromFlight(data);
+    updateStageTimesFromFlight(mainData);
 
     const flightNumberEl = flightCard.querySelector('.flight-number');
     const flightTimeEl = flightCard.querySelector('.flight-time');
     const flightDateEl = flightCard.querySelector('.flight-date');
     const flightDurationEl = flightCard.querySelector('.flight-duration');
 
-    // Pilot badge update based on data.isWork
+    // Pilot badge update based on mainData.isWork
     const badgeEl = flightCard.querySelector('.pilot-badge');
     const badgeIconEl = badgeEl ? badgeEl.querySelector('i') : null;
     const badgeTextEl = badgeEl ? badgeEl.querySelector('.pilot-badge-text') : null;
 
-    const isWork = data.isWork === true;
+    const isWork = mainData.isWork === true;
 
     if (badgeEl) {
         badgeEl.classList.toggle('pilot-badge--work', isWork);
@@ -753,7 +796,7 @@ function updateFlightCardFromData(data) {
     const locationIconEl = locationEl ? locationEl.querySelector('i') : null;
     const locationTextEl = locationEl ? locationEl.querySelector('.location-badge-text') : null;
 
-    const depIcaoForLocation = (data.departure && data.departure.icao) ? data.departure.icao.toString().toUpperCase() : '';
+    const depIcaoForLocation = (mainData.departure && mainData.departure.icao) ? mainData.departure.icao.toString().toUpperCase() : '';
     const isHome = depIcaoForLocation === 'UUEE';
 
     if (locationEl) {
@@ -772,7 +815,7 @@ function updateFlightCardFromData(data) {
     }
 
     if (flightNumberEl) {
-        const number = (data.number || '').toString().trim();
+        const number = (mainData.number || '').toString().trim();
         flightNumberEl.textContent = number ? number : 'SU ----';
     }
 
@@ -785,7 +828,7 @@ function updateFlightCardFromData(data) {
     }
 
     if (flightDurationEl) {
-        flightDurationEl.textContent = formatDuration(data.duration);
+        flightDurationEl.textContent = formatDuration(mainData.duration);
     }
 
     // Источник данных (пока фикс)
@@ -793,7 +836,7 @@ function updateFlightCardFromData(data) {
     if (sourceText) sourceText.textContent = 'Аккорд';
 
     // Сверка времени (startDate vs startDateWeb) — кратко в бейдже
-    const startDateWebStr = data.startDateWeb;
+    const startDateWebStr = webStartDateStr;
     const startDateWeb = startDateWebStr ? new Date(startDateWebStr) : null;
 
     if (!startDateWebStr || !startDateWeb || Number.isNaN(startDateWeb.getTime())) {
@@ -811,12 +854,12 @@ function updateFlightCardFromData(data) {
     }
 
     const updatedText = document.getElementById('updated-text');
-    if (updatedText) updatedText.textContent = formatUpdatedAgoShort(data._updatedAt);
+    if (updatedText) updatedText.textContent = formatUpdatedAgoShort(mainData._updatedAt);
 
     const airports = flightCard.querySelectorAll('.flight-route .airport');
     if (airports.length >= 2) {
-        const dep = data.departure || {};
-        const arr = data.arrival || {};
+        const dep = mainData.departure || {};
+        const arr = mainData.arrival || {};
 
         const depCode = airports[0].querySelector('.airport-code');
         const depName = airports[0].querySelector('.airport-name');
@@ -1242,10 +1285,10 @@ function updateTime() {
     }, 300);
 }
 
-// Инициализация и обновление каждую минуту
+// Инициализация и обновление каждые 10 секунд
 document.addEventListener('DOMContentLoaded', () => {
     updateTime();
-    setInterval(updateTime, 60000); // Обновление каждую минуту
+    setInterval(updateTime, 10000); // Обновление каждые 10 секунд
     // Подтягиваем сохранённые данные рейса в карточку при загрузке
     updateFlightCardFromStorage();
     try {
