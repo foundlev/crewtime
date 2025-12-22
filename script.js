@@ -731,7 +731,7 @@ function setFlightCardDashes() {
     const sourceText = document.getElementById('data-source-text');
     if (sourceText) sourceText.textContent = 'Аккорд';
 
-    setWebTimeBadge('empty', 'AFL WEB: нет данных', ['fas', 'fa-circle-question']);
+    setWebTimeBadge('empty', 'WEB: нет данных', ['fas', 'fa-circle-question']);
 
     const updatedText = document.getElementById('updated-text');
     if (updatedText) updatedText.textContent = '--';
@@ -855,17 +855,17 @@ function updateFlightCardFromData(data) {
     const startDateWeb = startDateWebStr ? new Date(startDateWebStr) : null;
 
     if (!startDateWebStr || !startDateWeb || Number.isNaN(startDateWeb.getTime())) {
-        setWebTimeBadge('empty', 'AFL WEB', ['fas', 'fa-circle-question']);
+        setWebTimeBadge('empty', 'WEB: нет данных', ['fas', 'fa-circle-question']);
     } else if (startDate && !Number.isNaN(startDate.getTime()) && startDateWeb.getTime() === startDate.getTime()) {
-        setWebTimeBadge('success', 'AFL WEB', ['fas', 'fa-check']);
+        setWebTimeBadge('success', 'WEB', ['fas', 'fa-check']);
     } else if (startDate && !Number.isNaN(startDate.getTime())) {
         const deltaMinutes = Math.round((startDateWeb.getTime() - startDate.getTime()) / 60000);
         const signed = formatSignedDeltaMinutes(deltaMinutes); // "+2:00" / "−1:30"
 
-        // Пишем прямо в бейдже: "AFL WEB (−2:00)"
-        setWebTimeBadge('warning', `AFL WEB`, ['fas', 'fa-triangle-exclamation']);
+        // Пишем прямо в бейдже: "WEB (−2:00)"
+        setWebTimeBadge('warning', `WEB`, ['fas', 'fa-triangle-exclamation']);
     } else {
-        setWebTimeBadge('warning', 'AFL WEB', ['fas', 'fa-triangle-exclamation']);
+        setWebTimeBadge('warning', 'WEB', ['fas', 'fa-triangle-exclamation']);
     }
 
     const updatedText = document.getElementById('updated-text');
@@ -1260,7 +1260,7 @@ function updateDataSourceBadge(source) {
     badge.classList.remove('meta-badge--source', 'meta-badge--source-calendar');
     
     if (source === 'calendar') {
-        text.textContent = 'Calendar';
+        text.textContent = 'Календарь';
         badge.classList.add('meta-badge--source-calendar');
         icon.className = 'fas fa-calendar-alt';
     } else {
@@ -1298,35 +1298,78 @@ function openFlightModal() {
                 cityNodes[1].textContent = mainData.arrival.city || '------';
             }
         }
-        
-        // Обновляем времена по источникам
-        const portalTimeEl = document.getElementById('modal-portal-time');
-        const calendarTimeEl = document.getElementById('modal-calendar-time');
-        const durationEl = document.getElementById('modal-duration');
-        
-        if (data.sources) {
-            if (data.sources.accord && data.sources.accord.startDate) {
-                const d = new Date(data.sources.accord.startDate);
-                portalTimeEl.textContent = `${formatFlightTime(d)}, ${formatFlightDate(d)}`;
-            } else {
-                portalTimeEl.textContent = '--:--, -- --- ----';
-            }
+
+        // Рендерим список источников
+        const sourcesListEl = document.getElementById('modal-sources-list');
+        if (sourcesListEl) {
+            sourcesListEl.innerHTML = '';
             
-            if (data.sources.calendar && data.sources.calendar.startDate) {
-                const d = new Date(data.sources.calendar.startDate);
-                calendarTimeEl.textContent = `${formatFlightTime(d)}, ${formatFlightDate(d)}`;
-            } else {
-                calendarTimeEl.textContent = '--:--, -- --- ----';
-            }
-        }
-        
-        if (mainData && mainData.duration) {
-            durationEl.textContent = formatDuration(mainData.duration);
+            const sourcesData = [
+                { id: 'accord', name: 'Аккорд', icon: 'fa-database', data: data.sources?.accord },
+                { id: 'calendar', name: 'Календарь', icon: 'fa-calendar-alt', data: data.sources?.calendar },
+                { id: 'web', name: 'Web', icon: 'fa-globe', data: data.sources?.web }
+            ];
+
+            // Сортировка: выбранный источник первым
+            const sortedSources = [...sourcesData].sort((a, b) => {
+                if (a.id === currentSource) return -1;
+                if (b.id === currentSource) return 1;
+                return 0;
+            });
+
+            const activeSourceData = sourcesData.find(s => s.id === currentSource)?.data;
+            const activeStartTime = activeSourceData?.startDate ? new Date(activeSourceData.startDate).getTime() : null;
+
+            sortedSources.forEach(source => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'modal-source-item';
+                if (source.id === currentSource) itemEl.classList.add('modal-source-item--active');
+                
+                const sData = source.data;
+                const hasData = sData && sData.startDate;
+                
+                if (!hasData) {
+                    itemEl.classList.add('modal-source-item--empty');
+                }
+
+                let statusHtml = '';
+                if (hasData && source.id !== currentSource && activeStartTime) {
+                    const sTime = new Date(sData.startDate).getTime();
+                    if (sTime === activeStartTime) {
+                        itemEl.classList.add('modal-source-item--match');
+                        statusHtml = '<i class="fas fa-check-circle" style="color: var(--status-success)"></i>';
+                    } else {
+                        itemEl.classList.add('modal-source-item--mismatch');
+                        statusHtml = '<i class="fas fa-exclamation-triangle" style="color: var(--status-warning)"></i>';
+                    }
+                }
+
+                const timeStr = hasData ? `${formatFlightTime(new Date(sData.startDate))}, ${formatFlightDate(new Date(sData.startDate))}` : 'нет данных';
+                const flightNum = (sData && sData.number) ? sData.number : '----';
+
+                itemEl.innerHTML = `
+                    <div class="modal-source-header">
+                        <div class="modal-source-name">
+                            <i class="fas ${source.icon}"></i> ${source.name}
+                        </div>
+                        <div class="modal-source-status">${statusHtml}</div>
+                    </div>
+                    <div class="modal-source-details">
+                        <div class="modal-source-flight">${flightNum}</div>
+                        <div class="modal-source-time">${timeStr}</div>
+                    </div>
+                `;
+                sourcesListEl.appendChild(itemEl);
+            });
         }
 
-        // Обновляем кнопки переключения
+        // Обновляем кнопки переключения и их доступность
         document.querySelectorAll('#source-toggle .source-button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.source === currentSource);
+            const sId = btn.dataset.source;
+            const hasData = data.sources && data.sources[sId] && data.sources[sId].startDate;
+            
+            btn.classList.toggle('active', sId === currentSource);
+            btn.classList.toggle('disabled', !hasData);
         });
     }
 

@@ -73,12 +73,12 @@
                 <div class="flight-meta-badges">
                     <div class="meta-badge meta-badge--source" id="data-source-badge" title="Источник данных">
                         <i class="fas fa-database"></i>
-                        <span id="data-source-text">Crew Портал</span>
+                        <span id="data-source-text">Аккорд</span>
                     </div>
 
                     <div class="meta-badge meta-badge--empty" id="web-time-badge" title="Сверка времени с Web">
                         <i class="fas fa-circle-question"></i>
-                        <span id="web-time-text">Web: нет данных</span>
+                        <span id="web-time-text">WEB: нет данных</span>
                     </div>
 
                     <div class="meta-badge meta-badge--empty" id="updated-badge" title="Когда обновляли данные">
@@ -307,24 +307,15 @@
                     <span>Источник данных:</span>
                     <div class="source-toggle" id="source-toggle">
                         <button class="source-button active" data-source="accord">
-                            <i class="fas fa-database"></i> Accord
+                            <i class="fas fa-database"></i> Аккорд
                         </button>
                         <button class="source-button" data-source="calendar">
-                            <i class="fas fa-calendar-alt"></i> Calendar
+                            <i class="fas fa-calendar-alt"></i> Календарь
                         </button>
                     </div>
                 </div>
-                <div class="modal-info-item" id="modal-portal-row">
-                    <span>Accord:</span>
-                    <span id="modal-portal-time">--:--, -- --- ----</span>
-                </div>
-                <div class="modal-info-item" id="modal-calendar-row">
-                    <span>Calendar:</span>
-                    <span id="modal-calendar-time">--:--, -- --- ----</span>
-                </div>
-                <div class="modal-info-item">
-                    <span>Длительность:</span>
-                    <span id="modal-duration">-- ч -- мин</span>
+                <div id="modal-sources-list" style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Сюда будут динамически рендериться источники -->
                 </div>
             </div>
         </div>

@@ -196,6 +196,7 @@ body {
     padding: 4px;
     border-radius: 12px;
     gap: 4px;
+    margin-top: 10px;
 }
 
 .source-button {
@@ -1014,6 +1015,69 @@ body {
 .modal-button-secondary {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-color);
+}
+
+.source-button.disabled {
+    opacity: 0.2;
+    pointer-events: none;
+}
+
+.modal-source-item {
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(142, 142, 147, 0.08);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.modal-source-item--active {
+    background: rgba(0, 122, 255, 0.08);
+    border-color: rgba(0, 122, 255, 0.2);
+}
+
+.modal-source-item--match {
+    border-color: var(--status-success);
+}
+
+.modal-source-item--mismatch {
+    border-color: var(--status-warning);
+}
+
+.modal-source-item--empty {
+    opacity: 0.5;
+}
+
+.modal-source-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.modal-source-name {
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.modal-source-status {
+    font-size: 14px;
+}
+
+.modal-source-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
+
+.modal-source-flight {
+    font-weight: 600;
+}
+
+.modal-source-time {
+    opacity: 0.8;
 }
 
 /* Анимация для плавного обновления времени */
