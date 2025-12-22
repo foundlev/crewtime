@@ -152,6 +152,12 @@
                         <input type="checkbox" class="toggle-checkbox" id="sleep-toggle" checked>
                         <span class="toggle-slider"></span>
                     </label>
+                    <button class="settings-button-small" id="reset-all-data" title="Сбросить все данные" style="color: var(--status-error); background: rgba(255, 69, 58, 0.1);">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button class="settings-button-small" id="reload-page" title="Обновить страницу">
+                        <i class="fas fa-redo-alt"></i>
+                    </button>
                     <button class="settings-button-small" id="settings-button-small" title="Настройки">
                         <i class="fas fa-cog"></i>
                     </button>
@@ -375,5 +381,18 @@
     <script src="assets/data/iata_icao.js"></script>
     <script src="assets/data/icao_info.js"></script>
     <script src="script.js"></script>
+
+    <!-- Кастомное окно подтверждения -->
+    <div class="modal" id="confirm-modal" style="z-index: 2000;">
+        <div class="modal-backdrop" id="confirm-modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <div class="modal-title" id="confirm-modal-title" style="margin-bottom: 16px; font-size: 18px;">Вы уверены?</div>
+            <div id="confirm-modal-message" style="margin-bottom: 24px; opacity: 0.8; font-size: 14px; line-height: 1.5;">Это действие нельзя будет отменить.</div>
+            <div class="modal-actions">
+                <button class="modal-button modal-button-secondary" id="confirm-modal-cancel">Отмена</button>
+                <button class="modal-button modal-button-primary" id="confirm-modal-confirm" style="background: var(--status-error);">Да</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

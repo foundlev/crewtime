@@ -1,3 +1,29 @@
+// ===== Управление кастомным подтверждением =====
+let confirmCallback = null;
+
+function showConfirm(title, message, callback, isDestructive = true) {
+    const modal = document.getElementById('confirm-modal');
+    const titleEl = document.getElementById('confirm-modal-title');
+    const messageEl = document.getElementById('confirm-modal-message');
+    const confirmBtn = document.getElementById('confirm-modal-confirm');
+
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message;
+    
+    if (confirmBtn) {
+        confirmBtn.style.background = isDestructive ? 'var(--status-error)' : 'var(--primary-color)';
+    }
+
+    confirmCallback = callback;
+    if (modal) modal.style.display = 'flex';
+}
+
+function hideConfirm() {
+    const modal = document.getElementById('confirm-modal');
+    if (modal) modal.style.display = 'none';
+    confirmCallback = null;
+}
+
 // ===== Работа с данными рейса из localStorage (crewPortalInfo) =====
 const CREW_PORTAL_LS_KEY = 'crewPortalInfo';
 const FLIGHT_DATA_SOURCE_LS_KEY = 'flight_data_source';
@@ -250,20 +276,15 @@ function setSelectedDataSource(source) {
 }
 
 function getMainDataFromRoot(data) {
-    if (!data || typeof data !== 'object') {
-        // Если данных вообще нет, но выбран ручной ввод, пытаемся взять его
-        const source = getSelectedDataSource();
-        if (source === 'manual') {
-            const manualData = getManualFlightData();
-            if (manualData && manualData.startDate) return manualData;
-        }
-        return null;
-    }
     const source = getSelectedDataSource();
     
     if (source === 'manual') {
         const manualData = getManualFlightData();
         if (manualData && manualData.startDate) return manualData;
+    }
+
+    if (!data || typeof data !== 'object') {
+        return null;
     }
 
     if (data.sources) {
@@ -865,7 +886,12 @@ function updateFlightCardFromData(data) {
     }
 
     if (flightDurationEl) {
-        flightDurationEl.textContent = formatDuration(mainData.duration);
+        if (getSelectedDataSource() === 'manual') {
+            flightDurationEl.style.display = 'none';
+        } else {
+            flightDurationEl.style.display = 'block';
+            flightDurationEl.textContent = formatDuration(mainData.duration);
+        }
     }
 
     // Источник данных
@@ -899,45 +925,72 @@ function updateFlightCardFromData(data) {
 
     const airports = flightCard.querySelectorAll('.flight-route .airport');
     if (airports.length >= 2) {
-        const dep = mainData.departure || {};
-        const arr = mainData.arrival || {};
-
         const depCode = airports[0].querySelector('.airport-code');
         const depName = airports[0].querySelector('.airport-name');
         const arrCode = airports[1].querySelector('.airport-code');
         const arrName = airports[1].querySelector('.airport-name');
 
-        const depIata = (dep.iata || '---').toString();
-        const depIcao = (dep.icao || '----').toString();
-        const arrIata = (arr.iata || '---').toString();
-        const arrIcao = (arr.icao || '----').toString();
+        if (mainData && mainData.departure && mainData.arrival) {
+            const dep = mainData.departure;
+            const arr = mainData.arrival;
 
-        if (depCode) depCode.textContent = `${depIata} / ${depIcao}`;
-        if (depName) {
-            const name = (dep.city || '------').toString();
-            depName.textContent = name.length > 14 ? name.slice(0, 14) : name;
-        }
+            const depIata = (dep.iata || '---').toString();
+            const depIcao = (dep.icao || '----').toString();
+            const arrIata = (arr.iata || '---').toString();
+            const arrIcao = (arr.icao || '----').toString();
 
-        if (arrCode) arrCode.textContent = `${arrIata} / ${arrIcao}`;
-        if (arrName) {
-            const name = (arr.city || '------').toString();
-            arrName.textContent = name.length > 14 ? name.slice(0, 14) : name;
+            if (depCode) {
+                if (dep.iata || dep.icao) {
+                    depCode.textContent = `${depIata} / ${depIcao}`;
+                } else {
+                    depCode.textContent = '--- / ----';
+                }
+            }
+            if (depName) {
+                const name = (dep.city || '------').toString();
+                depName.textContent = name.length > 14 ? name.slice(0, 14) : name;
+            }
+
+            if (arrCode) {
+                if (arr.iata || arr.icao) {
+                    arrCode.textContent = `${arrIata} / ${arrIcao}`;
+                } else {
+                    arrCode.textContent = '--- / ----';
+                }
+            }
+            if (arrName) {
+                const name = (arr.city || '------').toString();
+                arrName.textContent = name.length > 14 ? name.slice(0, 14) : name;
+            }
+        } else {
+            if (depCode) depCode.textContent = '--- / ----';
+            if (depName) depName.textContent = '------';
+            if (arrCode) arrCode.textContent = '--- / ----';
+            if (arrName) arrName.textContent = '------';
         }
     }
 }
 
 function updateFlightCardFromStorage() {
     try {
+        const source = getSelectedDataSource();
         const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
-        if (!raw) {
+        const data = raw ? safeParseJson(raw) : null;
+
+        // Если выбран ручной режим, мы можем обновиться даже если raw данных нет
+        if (source === 'manual') {
+            updateFlightCardFromData(data);
+            return;
+        }
+
+        if (!data) {
             setFlightCardDashes();
             return;
         }
 
-        const data = JSON.parse(raw);
         updateFlightCardFromData(data);
     } catch (err) {
-        console.warn('crewPortalInfo in localStorage is invalid:', err);
+        console.warn('Error updating flight card from storage:', err);
         setFlightCardDashes();
     }
 }
@@ -1364,22 +1417,32 @@ function openFlightModal() {
         // Обновляем длительность
         const modalDuration = document.getElementById('modal-flight-duration');
         if (modalDuration) {
-            modalDuration.textContent = mainData && mainData.duration ? formatDuration(mainData.duration) : '-- ч -- мин';
+            if (currentSource === 'manual') {
+                modalDuration.style.display = 'none';
+            } else {
+                modalDuration.style.display = 'block';
+                modalDuration.textContent = mainData && mainData.duration ? formatDuration(mainData.duration) : '-- ч -- мин';
+            }
         }
         
         // Обновляем аэропорты и смещения
-        if (mainData && mainData.departure && mainData.arrival) {
-            const depCodes = document.getElementById('modal-dep-codes');
-            const arrCodes = document.getElementById('modal-arr-codes');
-            const depCity = document.getElementById('modal-dep-city');
-            const arrCity = document.getElementById('modal-arr-city');
-            const depTz = document.getElementById('modal-dep-tz');
-            const arrTz = document.getElementById('modal-arr-tz');
+        const depCodes = document.getElementById('modal-dep-codes');
+        const arrCodes = document.getElementById('modal-arr-codes');
+        const depCity = document.getElementById('modal-dep-city');
+        const arrCity = document.getElementById('modal-arr-city');
+        const depTz = document.getElementById('modal-dep-tz');
+        const arrTz = document.getElementById('modal-arr-tz');
 
+        if (mainData && mainData.departure && mainData.arrival) {
             const flightDate = mainData.startDate ? new Date(mainData.startDate) : new Date();
 
-            if (depCodes) depCodes.textContent = `${mainData.departure.iata || '---'} / ${mainData.departure.icao || '----'}`;
-            if (arrCodes) arrCodes.textContent = `${mainData.arrival.iata || '---'} / ${mainData.arrival.icao || '----'}`;
+            const depIata = mainData.departure.iata || '---';
+            const depIcao = mainData.departure.icao || '----';
+            const arrIata = mainData.arrival.iata || '---';
+            const arrIcao = mainData.arrival.icao || '----';
+
+            if (depCodes) depCodes.textContent = `${depIata} / ${depIcao}`;
+            if (arrCodes) arrCodes.textContent = `${arrIata} / ${arrIcao}`;
             
             if (depCity) {
                 const name = (mainData.departure.city || '------').toString();
@@ -1395,20 +1458,26 @@ function openFlightModal() {
             const arrOffsetStr = getGmtOffsetVsMoscow(mainData.arrival.icao, flightDate);
 
             if (depTz) {
-                if (depOffsetStr) {
-                    depTz.textContent = depOffsetStr;
-                    depTz.style.display = 'block';
-                } else {
-                    depTz.style.display = 'none';
-                }
+                depTz.textContent = depOffsetStr || '';
+                depTz.style.display = depOffsetStr ? 'block' : 'none';
             }
             if (arrTz) {
-                if (arrOffsetStr) {
-                    arrTz.textContent = arrOffsetStr;
-                    arrTz.style.display = 'block';
-                } else {
-                    arrTz.style.display = 'none';
-                }
+                arrTz.textContent = arrOffsetStr || '';
+                arrTz.style.display = arrOffsetStr ? 'block' : 'none';
+            }
+        } else {
+            // Сброс если данных нет или они неполные
+            if (depCodes) depCodes.textContent = '--- / ----';
+            if (arrCodes) arrCodes.textContent = '--- / ----';
+            if (depCity) depCity.textContent = '------';
+            if (arrCity) arrCity.textContent = '------';
+            if (depTz) {
+                depTz.textContent = '';
+                depTz.style.display = 'none';
+            }
+            if (arrTz) {
+                arrTz.textContent = '';
+                arrTz.style.display = 'none';
             }
         }
 
@@ -1452,14 +1521,19 @@ function openFlightModal() {
                     itemEl.title = 'Нажмите, чтобы удалить ручные данные';
                     itemEl.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        if (confirm('Вы уверены, что хотите удалить ручные данные?')) {
-                            localStorage.removeItem(MANUAL_FLIGHT_DATA_LS_KEY);
-                            if (getSelectedDataSource() === 'manual') {
-                                setSelectedDataSource('accord');
+                        showConfirm(
+                            'Удалить ручные данные?',
+                            'Вы уверены, что хотите полностью удалить информацию, введенную вручную?',
+                            () => {
+                                localStorage.removeItem(MANUAL_FLIGHT_DATA_LS_KEY);
+                                if (getSelectedDataSource() === 'manual') {
+                                    setSelectedDataSource('accord');
+                                }
+                                updateFlightCardFromStorage();
+                                openFlightModal(); // Перерисовать
+                                hideConfirm();
                             }
-                            updateFlightCardFromStorage();
-                            openFlightModal(); // Перерисовать
-                        }
+                        );
                     });
                 }
                 
@@ -1747,16 +1821,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Обновляем активную кнопку в UI модалки
             document.querySelectorAll('#source-toggle .source-button').forEach(b => {
-                b.classList.toggle('active', b.dataset.source === newSource);
+                b.classList.toggle('active', b.dataset.source === getSelectedDataSource());
             });
 
             // Перерисовываем всё
-            const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
-            const data = raw ? safeParseJson(raw) : null;
-            
-            updateFlightCardFromData(data);
-            // После смены источника нужно также обновить саму модалку (например, длительность и заголовок могут измениться)
+            updateFlightCardFromStorage();
             openFlightModal(); 
+            updateNextStageCountdown();
         });
     });
 
@@ -1768,6 +1839,74 @@ document.addEventListener('DOMContentLoaded', () => {
         'manual-departure-date',
         'manual-departure-time'
     ];
+
+    const validateManualForm = () => {
+        const flightNum = document.getElementById('manual-flight-number').value.trim();
+        const depCode = document.getElementById('manual-dep-icao').value.trim();
+        const arrCode = document.getElementById('manual-arr-icao').value.trim();
+        const dateVal = document.getElementById('manual-departure-date').value;
+        const timeVal = document.getElementById('manual-departure-time').value;
+        
+        const saveBtn = document.getElementById('manual-save-btn');
+        const isValid = flightNum && (depCode.length >= 3) && (arrCode.length >= 3) && dateVal && timeVal;
+        
+        if (saveBtn) {
+            saveBtn.disabled = !isValid;
+            saveBtn.style.opacity = isValid ? '1' : '0.5';
+        }
+    };
+
+    const updateManualOffsetsUI = () => {
+        const depCodeInput = document.getElementById('manual-dep-icao');
+        const arrCodeInput = document.getElementById('manual-arr-icao');
+        const dateInput = document.getElementById('manual-departure-date');
+        
+        const depTzEl = document.getElementById('modal-dep-tz');
+        const arrTzEl = document.getElementById('modal-arr-tz');
+
+        if (!depCodeInput || !arrCodeInput) return;
+
+        let depCode = depCodeInput.value.trim().toUpperCase();
+        let arrCode = arrCodeInput.value.trim().toUpperCase();
+        const dateVal = dateInput?.value || new Date().toISOString().split('T')[0];
+        const flightDate = new Date(dateVal);
+
+        if (depCode.length === 3 && typeof iata_icao !== 'undefined') depCode = iata_icao[depCode] || depCode;
+        if (arrCode.length === 3 && typeof iata_icao !== 'undefined') arrCode = iata_icao[arrCode] || arrCode;
+
+        const depOffsetStr = getGmtOffsetVsMoscow(depCode, flightDate);
+        const arrOffsetStr = getGmtOffsetVsMoscow(arrCode, flightDate);
+
+        if (depTzEl) {
+            depTzEl.textContent = depOffsetStr || '--';
+            depTzEl.style.display = depOffsetStr ? 'block' : 'none';
+        }
+        if (arrTzEl) {
+            arrTzEl.textContent = arrOffsetStr || '--';
+            arrTzEl.style.display = arrOffsetStr ? 'block' : 'none';
+        }
+        
+        // Также обновим города в модалке сразу
+        const depCityEl = document.getElementById('modal-dep-city');
+        const arrCityEl = document.getElementById('modal-arr-city');
+        const depInfo = (typeof icao_info !== 'undefined' && icao_info[depCode]) || {};
+        const arrInfo = (typeof icao_info !== 'undefined' && icao_info[arrCode]) || {};
+        
+        if (depCityEl) {
+            const name = depInfo.geo ? depInfo.geo[0] : '------';
+            depCityEl.textContent = name.length > 14 ? name.slice(0, 14) : name;
+        }
+        if (arrCityEl) {
+            const name = arrInfo.geo ? arrInfo.geo[0] : '------';
+            arrCityEl.textContent = name.length > 14 ? name.slice(0, 14) : name;
+        }
+        
+        // И коды
+        const depCodesEl = document.getElementById('modal-dep-codes');
+        const arrCodesEl = document.getElementById('modal-arr-codes');
+        if (depCodesEl) depCodesEl.textContent = `${depInfo.iata || '---'} / ${depCode || '----'}`;
+        if (arrCodesEl) arrCodesEl.textContent = `${arrInfo.iata || '---'} / ${arrCode || '----'}`;
+    };
 
     const updateManualDataLogic = () => {
         const flightNum = document.getElementById('manual-flight-number').value.trim();
@@ -1878,7 +2017,14 @@ document.addEventListener('DOMContentLoaded', () => {
     manualInputs.forEach(id => {
         const input = document.getElementById(id);
         if (input) {
-            input.addEventListener('input', updateManualDataLogic);
+            input.addEventListener('input', () => {
+                validateManualForm();
+                updateManualOffsetsUI();
+            });
+            input.addEventListener('change', () => {
+                validateManualForm();
+                updateManualOffsetsUI();
+            });
         }
     });
 
@@ -1908,28 +2054,76 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     if (manualSaveBtn) {
-        manualSaveBtn.addEventListener('click', () => setManualUIState(true));
+        manualSaveBtn.addEventListener('click', () => {
+            updateManualDataLogic();
+            setManualUIState(true);
+            updateFlightCardFromStorage();
+            updateNextStageCountdown(); // Обновить таймеры на главном экране
+        });
     }
     if (manualEditBtn) {
-        manualEditBtn.addEventListener('click', () => setManualUIState(false));
+        manualEditBtn.addEventListener('click', () => {
+            setManualUIState(false);
+            validateManualForm();
+        });
     }
     if (manualDeleteBtn) {
         manualDeleteBtn.addEventListener('click', () => {
-            if (confirm('Вы уверены, что хотите удалить ручные данные?')) {
-                localStorage.removeItem(MANUAL_FLIGHT_DATA_LS_KEY);
-                manualInputs.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.value = '';
-                        el.disabled = false;
+            showConfirm(
+                'Удалить ручные данные?',
+                'Вы уверены, что хотите полностью удалить информацию, введенную вручную?',
+                () => {
+                    localStorage.removeItem(MANUAL_FLIGHT_DATA_LS_KEY);
+                    manualInputs.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            el.value = '';
+                            el.disabled = false;
+                        }
+                    });
+                    setManualUIState(false);
+                    if (getSelectedDataSource() === 'manual') {
+                        setSelectedDataSource('accord');
                     }
-                });
-                setManualUIState(false);
-                if (getSelectedDataSource() === 'manual') {
-                    setSelectedDataSource('accord');
+                    updateFlightCardFromStorage();
+                    openFlightModal();
+                    hideConfirm();
                 }
-                updateFlightCardFromStorage();
-                openFlightModal();
+            );
+        });
+    }
+
+    const resetAllBtn = document.getElementById('reset-all-data');
+    if (resetAllBtn) {
+        resetAllBtn.addEventListener('click', () => {
+            showConfirm(
+                'Сбросить все данные?',
+                'Это действие удалит все настройки, авторизацию и сохраненные данные рейсов. Сайт будет перезагружен.',
+                () => {
+                    localStorage.clear();
+                    window.location.reload();
+                }
+            );
+        });
+    }
+
+    const reloadPageBtn = document.getElementById('reload-page');
+    if (reloadPageBtn) {
+        reloadPageBtn.addEventListener('click', () => {
+            window.location.reload();
+        });
+    }
+
+    const confirmCancelBtn = document.getElementById('confirm-modal-cancel');
+    const confirmConfirmBtn = document.getElementById('confirm-modal-confirm');
+    const confirmBackdrop = document.getElementById('confirm-modal-backdrop');
+
+    if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', hideConfirm);
+    if (confirmBackdrop) confirmBackdrop.addEventListener('click', hideConfirm);
+    if (confirmConfirmBtn) {
+        confirmConfirmBtn.addEventListener('click', () => {
+            if (typeof confirmCallback === 'function') {
+                confirmCallback();
             }
         });
     }
@@ -1939,8 +2133,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openFlightModal = function() {
         originalOpenFlightModal();
         const manualData = getManualFlightData();
+        const currentSource = getSelectedDataSource();
+        
         if (manualData && manualData.startDate) {
-            setManualUIState(true);
+            // Если мы в ручном режиме и есть данные - сворачиваем
+            setManualUIState(currentSource === 'manual');
             
             // Заполняем поля (т.к. openFlightModal мог их не заполнить если источник не manual)
             document.getElementById('manual-flight-number').value = manualData.number || '';
@@ -1949,24 +2146,32 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (manualData.startDate) {
                 const d = new Date(manualData.startDate);
-                const tz = airports_tz[manualData.departure?.icao] || 'UTC';
+                const tz = (typeof airports_tz !== 'undefined' && manualData.departure?.icao) ? (airports_tz[manualData.departure.icao] || 'UTC') : 'UTC';
                 
                 // Get local time for the input
-                const dtf = new Intl.DateTimeFormat('en-CA', { // en-CA gives YYYY-MM-DD
-                    timeZone: tz,
-                    year: 'numeric', month: '2-digit', day: '2-digit'
-                });
-                const dtfTime = new Intl.DateTimeFormat('en-GB', { // en-GB gives HH:mm
-                    timeZone: tz,
-                    hour: '2-digit', minute: '2-digit', hour12: false
-                });
-                
-                document.getElementById('manual-departure-date').value = dtf.format(d);
-                document.getElementById('manual-departure-time').value = dtfTime.format(d);
+                try {
+                    const dtf = new Intl.DateTimeFormat('en-CA', { // en-CA gives YYYY-MM-DD
+                        timeZone: tz,
+                        year: 'numeric', month: '2-digit', day: '2-digit'
+                    });
+                    const dtfTime = new Intl.DateTimeFormat('en-GB', { // en-GB gives HH:mm
+                        timeZone: tz,
+                        hour: '2-digit', minute: '2-digit', hour12: false
+                    });
+                    
+                    document.getElementById('manual-departure-date').value = dtf.format(d);
+                    document.getElementById('manual-departure-time').value = dtfTime.format(d);
+                } catch (e) {
+                    // Fallback to UTC if timezone is invalid
+                    document.getElementById('manual-departure-date').value = d.toISOString().split('T')[0];
+                    document.getElementById('manual-departure-time').value = d.toISOString().split('T')[1].slice(0, 5);
+                }
             }
         } else {
             setManualUIState(false);
         }
+        validateManualForm();
+        updateManualOffsetsUI();
     };
 
     // Обработчик для переключателя сна
