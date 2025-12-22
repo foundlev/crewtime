@@ -169,31 +169,11 @@ function timeToPretty(timeStr) {
 function applyStageSettingsToUI(context = 'home') {
     const settings = getStageSettings();
 
-    // 1) заполняем инпуты в модалке
+    // заполняем инпуты в модалке
     document.querySelectorAll('.time-input[data-setting]').forEach((input) => {
         const key = input.dataset.setting;
         if (!key) return;
         input.value = settings[key] || DEFAULT_STAGE_SETTINGS[key] || '00:00';
-    });
-
-    // 2) обновляем stage-card подписи "за ..."
-    const prefix = context === 'hotel' ? 'hotel_' : 'home_';
-    const map = {
-        rest: `${prefix}rest`,
-        wakeup: `${prefix}wakeup`,
-        taxi: `${prefix}taxi`,
-        exit: `${prefix}exit`
-    };
-
-    document.querySelectorAll('.stage-item').forEach((stageEl) => {
-        const stage = stageEl.dataset.stage;
-        const key = map[stage];
-        if (!key) return;
-
-        const countdownEl = stageEl.querySelector('.stage-countdown');
-        if (!countdownEl) return;
-
-        countdownEl.textContent = timeToPretty(settings[key]);
     });
 }
 
@@ -883,6 +863,17 @@ function updateFlightCardFromData(data) {
     const badgeIconEl = badgeEl ? badgeEl.querySelector('i') : null;
     const badgeTextEl = badgeEl ? badgeEl.querySelector('.pilot-badge-text') : null;
 
+    // Обновляем время сна из данных рейса
+    if (mainData.sleep_hours !== undefined && mainData.sleep_hours !== null) {
+        sleepHours = mainData.sleep_hours;
+        sleepMinutes = mainData.sleep_minutes || 0;
+    } else {
+        // Дефолт если в данных нет
+        sleepHours = 9;
+        sleepMinutes = 0;
+    }
+    updateSleepDisplay();
+
     if (!mainData) {
         setFlightCardDashes();
         return;
@@ -1227,8 +1218,8 @@ function updateTimeDifferenceByDepartureIcao() {
 }
 
 // Управление настройками сна
-let sleepHours = 9;
-let sleepMinutes = 0;
+let sleepHours = null;
+let sleepMinutes = null;
 
 function updateSleepDisplay() {
     const sleepValueElement = document.getElementById('sleep-value');
@@ -1237,7 +1228,11 @@ function updateSleepDisplay() {
     const sleepToggle = document.getElementById('sleep-toggle');
 
     if (sleepValueElement) {
-        sleepValueElement.textContent = `${sleepHours}:${sleepMinutes.toString().padStart(2, '0')}`;
+        if (sleepHours === null || sleepMinutes === null) {
+            sleepValueElement.textContent = '-:--';
+        } else {
+            sleepValueElement.textContent = `${sleepHours}:${sleepMinutes.toString().padStart(2, '0')}`;
+        }
     }
 
     // Если сон выключен — контролы недоступны

@@ -149,7 +149,7 @@
                 <div class="sleep-toggle-container">
                     <span class="toggle-label">Сон</span>
                     <label class="toggle-switch">
-                        <input type="checkbox" class="toggle-checkbox" id="sleep-toggle" checked>
+                        <input type="checkbox" class="toggle-checkbox" id="sleep-toggle">
                         <span class="toggle-slider"></span>
                     </label>
                     <button class="settings-button-small" id="reset-all-data" title="Сбросить все данные" style="color: var(--status-error); background: rgba(255, 69, 58, 0.1);">
@@ -167,7 +167,7 @@
                 <button class="sleep-button" id="sleep-decrease" disabled>
                     <i class="fas fa-minus"></i>
                 </button>
-                <div class="sleep-value" id="sleep-value">9:00</div>
+                <div class="sleep-value" id="sleep-value">-:--</div>
                 <button class="sleep-button" id="sleep-increase">
                     <i class="fas fa-plus"></i>
                 </button>
@@ -189,19 +189,19 @@
                 <div class="time-settings-grid">
                     <div class="time-setting">
                         <div class="time-label">Отдых</div>
-                        <input type="time" class="time-input" value="00:30" step="60" data-setting="home_rest">
+                        <input type="time" class="time-input" step="60" data-setting="home_rest">
                     </div>
                     <div class="time-setting">
                         <div class="time-label">Подъём</div>
-                        <input type="time" class="time-input" value="01:10" step="60" data-setting="home_wakeup">
+                        <input type="time" class="time-input" step="60" data-setting="home_wakeup">
                     </div>
                     <div class="time-setting">
                         <div class="time-label">Такси</div>
-                        <input type="time" class="time-input" value="00:10" step="60" data-setting="home_taxi">
+                        <input type="time" class="time-input" step="60" data-setting="home_taxi">
                     </div>
                     <div class="time-setting">
                         <div class="time-label">Выход</div>
-                        <input type="time" class="time-input" value="02:30" step="60" data-setting="home_exit">
+                        <input type="time" class="time-input" step="60" data-setting="home_exit">
                     </div>
                 </div>
             </div>
@@ -211,28 +211,28 @@
                 <div class="time-settings-grid">
                     <div class="time-setting">
                         <div class="time-label">Отдых</div>
-                        <input type="time" class="time-input" value="00:30" step="60" data-setting="hotel_rest">
+                        <input type="time" class="time-input" step="60" data-setting="hotel_rest">
                     </div>
                     <div class="time-setting">
                         <div class="time-label">Подъём</div>
-                        <input type="time" class="time-input" value="01:10" step="60" data-setting="hotel_wakeup">
+                        <input type="time" class="time-input" step="60" data-setting="hotel_wakeup">
                     </div>
                     <div class="time-setting">
                         <div class="time-label">Выход</div>
-                        <input type="time" class="time-input" value="00:10" step="60" data-setting="hotel_taxi">
+                        <input type="time" class="time-input" step="60" data-setting="hotel_taxi">
                     </div>
                     <div class="time-setting">
                         <div class="time-label">Выезд</div>
-                        <input type="time" class="time-input" value="02:30" step="60" data-setting="hotel_exit">
+                        <input type="time" class="time-input" step="60" data-setting="hotel_exit">
                     </div>
                 </div>
             </div>
 
             <div class="auth-section">
                 <div class="modal-section-title">Авторизация</div>
-                <input type="text" class="auth-input" placeholder="Логин" value="demo_user" id="login-input">
+                <input type="text" class="auth-input" placeholder="Логин" value="" id="login-input">
                 <div class="password-container">
-                    <input type="password" class="auth-input" placeholder="Пароль" value="password" id="password-input">
+                    <input type="password" class="auth-input" placeholder="Пароль" value="" id="password-input">
                     <button class="password-toggle" id="password-toggle">
                         <i class="fas fa-eye"></i>
                     </button>
