@@ -1,5 +1,6 @@
 // ===== Работа с данными рейса из localStorage (crewPortalInfo) =====
 const CREW_PORTAL_LS_KEY = 'crewPortalInfo';
+const FLIGHT_DATA_SOURCE_LS_KEY = 'flight_data_source';
 const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/test.php?randomDate=false';
 
 // ===== Настройки этапов (localStorage) =====
@@ -241,14 +242,38 @@ function clampStageTime(dateObj) {
     return dateObj;
 }
 
+function getSelectedDataSource() {
+    return localStorage.getItem(FLIGHT_DATA_SOURCE_LS_KEY) || 'accord';
+}
+
+function setSelectedDataSource(source) {
+    localStorage.setItem(FLIGHT_DATA_SOURCE_LS_KEY, source);
+}
+
+function getMainDataFromRoot(data) {
+    if (!data || typeof data !== 'object') return null;
+    const source = getSelectedDataSource();
+    
+    if (data.sources) {
+        if (source === 'calendar' && data.sources.calendar) {
+            const d = { ...data.sources.calendar };
+            if (!d._updatedAt && data._updatedAt) d._updatedAt = data._updatedAt;
+            return d;
+        }
+        // default to accord
+        if (data.sources.accord) {
+            const d = { ...data.sources.accord };
+            if (!d._updatedAt && data._updatedAt) d._updatedAt = data._updatedAt;
+            return d;
+        }
+    }
+    return data;
+}
+
 function getCurrentContextFromFlightData(data) {
     if (!data) return 'home';
 
-    let d = data;
-    if (data.sources && data.sources.accord) {
-        d = data.sources.accord;
-    }
-
+    const d = getMainDataFromRoot(data);
     const depIcao = d && d.departure && d.departure.icao ? d.departure.icao.toString().toUpperCase() : '';
     if (!depIcao) return 'home';
     return depIcao === 'UUEE' ? 'home' : 'hotel';
@@ -263,10 +288,8 @@ function getCurrentContextFromStorage() {
 function getFlightId(data) {
     if (!data || typeof data !== 'object') return '';
 
-    let d = data;
-    if (data.sources && data.sources.accord) {
-        d = data.sources.accord;
-    }
+    const d = getMainDataFromRoot(data);
+    if (!d) return '';
 
     const num = (d.number || '').toString().trim();
     const sd = (d.startDate || '').toString().trim();
@@ -368,12 +391,9 @@ function updateStageTimesFromFlight(data) {
         return;
     }
 
-    let d = data;
-    if (data.sources && data.sources.accord) {
-        d = data.sources.accord;
-    }
+    const d = getMainDataFromRoot(data);
 
-    if (!d.startDate) {
+    if (!d || !d.startDate) {
         stages.forEach((el) => {
             const timeEl = el.querySelector('.stage-time');
             if (timeEl) timeEl.textContent = '--:--';
@@ -734,20 +754,11 @@ function updateFlightCardFromData(data) {
     }
 
     // Обработка новой структуры данных от сервера
-    let mainData = data;
+    const mainData = getMainDataFromRoot(data);
     let webStartDateStr = data.startDateWeb;
 
-    if (data.sources) {
-        if (data.sources.accord) {
-            mainData = data.sources.accord;
-            // Сохраняем _updatedAt из корня, если его нет в accord
-            if (!mainData._updatedAt && data._updatedAt) {
-                mainData._updatedAt = data._updatedAt;
-            }
-        }
-        if (data.sources.web && data.sources.web.startDate) {
-            webStartDateStr = data.sources.web.startDate;
-        }
+    if (data.sources && data.sources.web && data.sources.web.startDate) {
+        webStartDateStr = data.sources.web.startDate;
     }
 
     // Clear inline loading styles (setFlightCardDashes uses inline background/shadow)
@@ -760,7 +771,7 @@ function updateFlightCardFromData(data) {
     // Refresh time-difference badge state when new data is applied
     updateTimeDifferenceByDepartureIcao();
 
-    const startDateStr = mainData.startDate;
+    const startDateStr = mainData ? mainData.startDate : null;
     const startDate = startDateStr ? new Date(startDateStr) : null;
     updateStageTimesFromFlight(mainData);
 
@@ -773,6 +784,11 @@ function updateFlightCardFromData(data) {
     const badgeEl = flightCard.querySelector('.pilot-badge');
     const badgeIconEl = badgeEl ? badgeEl.querySelector('i') : null;
     const badgeTextEl = badgeEl ? badgeEl.querySelector('.pilot-badge-text') : null;
+
+    if (!mainData) {
+        setFlightCardDashes();
+        return;
+    }
 
     const isWork = mainData.isWork === true;
 
@@ -831,9 +847,8 @@ function updateFlightCardFromData(data) {
         flightDurationEl.textContent = formatDuration(mainData.duration);
     }
 
-    // Источник данных (пока фикс)
-    const sourceText = document.getElementById('data-source-text');
-    if (sourceText) sourceText.textContent = 'Аккорд';
+    // Источник данных
+    updateDataSourceBadge(getSelectedDataSource());
 
     // Сверка времени (startDate vs startDateWeb) — кратко в бейдже
     const startDateWebStr = webStartDateStr;
@@ -1235,7 +1250,86 @@ function closeStageModal() {
     if (modal) modal.style.display = 'none';
 }
 
+function updateDataSourceBadge(source) {
+    const badge = document.getElementById('data-source-badge');
+    const text = document.getElementById('data-source-text');
+    const icon = badge ? badge.querySelector('i') : null;
+    
+    if (!badge || !text || !icon) return;
+
+    badge.classList.remove('meta-badge--source', 'meta-badge--source-calendar');
+    
+    if (source === 'calendar') {
+        text.textContent = 'Calendar';
+        badge.classList.add('meta-badge--source-calendar');
+        icon.className = 'fas fa-calendar-alt';
+    } else {
+        text.textContent = 'Аккорд';
+        badge.classList.add('meta-badge--source');
+        icon.className = 'fas fa-database';
+    }
+}
+
 function openFlightModal() {
+    const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+    const data = raw ? safeParseJson(raw) : null;
+    
+    if (data) {
+        const currentSource = getSelectedDataSource();
+        const mainData = getMainDataFromRoot(data);
+        
+        // Обновляем заголовок в модалке (номер рейса)
+        const modalTitle = document.querySelector('#flight-modal [style*="font-size: 24px"]');
+        if (modalTitle) {
+            modalTitle.textContent = (mainData && mainData.number) ? mainData.number : 'SU ----';
+        }
+        
+        // Обновляем аэропорты
+        if (mainData && mainData.departure && mainData.arrival) {
+            const depNodes = document.querySelectorAll('#flight-modal div[style*="font-size: 18px"]');
+            const cityNodes = document.querySelectorAll('#flight-modal div[style*="font-size: 14px"]');
+            
+            if (depNodes.length >= 2) {
+                depNodes[0].textContent = `${mainData.departure.iata || '---'} / ${mainData.departure.icao || '----'}`;
+                depNodes[1].textContent = `${mainData.arrival.iata || '---'} / ${mainData.arrival.icao || '----'}`;
+            }
+            if (cityNodes.length >= 2) {
+                cityNodes[0].textContent = mainData.departure.city || '------';
+                cityNodes[1].textContent = mainData.arrival.city || '------';
+            }
+        }
+        
+        // Обновляем времена по источникам
+        const portalTimeEl = document.getElementById('modal-portal-time');
+        const calendarTimeEl = document.getElementById('modal-calendar-time');
+        const durationEl = document.getElementById('modal-duration');
+        
+        if (data.sources) {
+            if (data.sources.accord && data.sources.accord.startDate) {
+                const d = new Date(data.sources.accord.startDate);
+                portalTimeEl.textContent = `${formatFlightTime(d)}, ${formatFlightDate(d)}`;
+            } else {
+                portalTimeEl.textContent = '--:--, -- --- ----';
+            }
+            
+            if (data.sources.calendar && data.sources.calendar.startDate) {
+                const d = new Date(data.sources.calendar.startDate);
+                calendarTimeEl.textContent = `${formatFlightTime(d)}, ${formatFlightDate(d)}`;
+            } else {
+                calendarTimeEl.textContent = '--:--, -- --- ----';
+            }
+        }
+        
+        if (mainData && mainData.duration) {
+            durationEl.textContent = formatDuration(mainData.duration);
+        }
+
+        // Обновляем кнопки переключения
+        document.querySelectorAll('#source-toggle .source-button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.source === currentSource);
+        });
+    }
+
     document.getElementById('flight-modal').style.display = 'flex';
 }
 
@@ -1447,6 +1541,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('flight-card').addEventListener('click', openFlightModal);
     document.getElementById('flight-modal-close').addEventListener('click', closeFlightModal);
     document.getElementById('flight-modal-backdrop').addEventListener('click', closeFlightModal);
+
+    // Обработка переключения источника данных
+    document.querySelectorAll('#source-toggle .source-button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const newSource = btn.dataset.source;
+            if (!newSource) return;
+
+            setSelectedDataSource(newSource);
+
+            // Обновляем активную кнопку в UI модалки
+            document.querySelectorAll('#source-toggle .source-button').forEach(b => {
+                b.classList.toggle('active', b.dataset.source === newSource);
+            });
+
+            // Перерисовываем всё
+            const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+            const data = raw ? safeParseJson(raw) : null;
+            if (data) {
+                updateFlightCardFromData(data);
+                // После смены источника нужно также обновить саму модалку (например, длительность и заголовок могут измениться)
+                openFlightModal(); 
+            }
+        });
+    });
 
     // Обработчик для переключателя сна
     document.getElementById('sleep-toggle').addEventListener('change', function() {

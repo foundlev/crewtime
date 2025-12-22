@@ -304,16 +304,27 @@
             </div>
             <div class="modal-info">
                 <div class="modal-info-item">
-                    <span>Портал:</span>
-                    <span>14:30, 22 нояб. 2024</span>
+                    <span>Источник данных:</span>
+                    <div class="source-toggle" id="source-toggle">
+                        <button class="source-button active" data-source="accord">
+                            <i class="fas fa-database"></i> Accord
+                        </button>
+                        <button class="source-button" data-source="calendar">
+                            <i class="fas fa-calendar-alt"></i> Calendar
+                        </button>
+                    </div>
                 </div>
-                <div class="modal-info-item">
-                    <span>Табло:</span>
-                    <span>14:30, 22 нояб. 2024</span>
+                <div class="modal-info-item" id="modal-portal-row">
+                    <span>Accord:</span>
+                    <span id="modal-portal-time">--:--, -- --- ----</span>
+                </div>
+                <div class="modal-info-item" id="modal-calendar-row">
+                    <span>Calendar:</span>
+                    <span id="modal-calendar-time">--:--, -- --- ----</span>
                 </div>
                 <div class="modal-info-item">
                     <span>Длительность:</span>
-                    <span>2 ч 35 мин</span>
+                    <span id="modal-duration">-- ч -- мин</span>
                 </div>
             </div>
         </div>
