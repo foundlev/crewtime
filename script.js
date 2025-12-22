@@ -495,6 +495,19 @@ function formatUpdatedAgoShort(isoString) {
     return `${totalMin} мин назад`;
 }
 
+function updateUpdatedBadgeRealtime() {
+    const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+    if (!raw) return;
+
+    const data = safeParseJson(raw);
+    if (!data || !data._updatedAt) return;
+
+    const updatedText = document.getElementById('updated-text');
+    if (!updatedText) return;
+
+    updatedText.textContent = formatUpdatedAgoShort(data._updatedAt);
+}
+
 function setCountdownCard(iconClasses, labelText, timeText) {
     const iconEl = document.getElementById('next-stage-icon');
     const labelEl = document.getElementById('next-stage-label');
@@ -1221,6 +1234,8 @@ function updateTime() {
 
         // Update time-difference badge state after updating text
         updateTimeDifferenceByDepartureIcao();
+
+        updateUpdatedBadgeRealtime();
 
         moscowTimeElement.classList.remove('updating');
         localTimeElement.classList.remove('updating');
