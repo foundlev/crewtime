@@ -190,12 +190,16 @@ body {
     box-shadow: 0 2px 10px rgba(255, 149, 0, 0.18);
 }
 
+.meta-badge--source-manual {
+    background: var(--status-error-bg);
+    box-shadow: 0 2px 10px rgba(255, 59, 48, 0.18);
+}
+
 .source-toggle {
     display: flex;
     background: rgba(142, 142, 147, 0.12);
     padding: 4px;
     border-radius: 12px;
-    gap: 4px;
     margin-top: 10px;
 }
 
@@ -1045,6 +1049,27 @@ body {
 
 .modal-source-item--empty {
     opacity: 0.5;
+}
+
+.modal-source-item--manual-clickable {
+    cursor: pointer;
+}
+
+.modal-source-item--manual-clickable:active {
+    transform: scale(0.98);
+}
+
+.manual-input-minimized #manual-input-container {
+    display: none;
+}
+
+.manual-input-minimized {
+    padding-bottom: 8px !important;
+}
+
+.auth-input:disabled {
+    opacity: 0.6;
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .modal-source-header {

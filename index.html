@@ -325,8 +325,46 @@
                         <button class="source-button" data-source="calendar">
                             <i class="fas fa-calendar-alt"></i> Календарь
                         </button>
+                        <button class="source-button" data-source="manual">
+                            <i class="fas fa-edit"></i> Ручной
+                        </button>
                     </div>
                 </div>
+
+                <!-- Блок ручного ввода -->
+                <div id="manual-input-section" style="display: none; margin-top: 16px; padding: 16px; background: rgba(142, 142, 147, 0.1); border-radius: 14px; border: 1px solid var(--border-color); overflow: hidden; transition: all 0.3s ease;">
+                    <div id="manual-input-container">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                            <div style="grid-column: span 2;">
+                                <div class="time-label" style="margin-bottom: 6px;">Номер рейса</div>
+                                <input type="text" id="manual-flight-number" class="auth-input" style="margin-bottom: 0; padding: 10px;" placeholder="SU 1004">
+                            </div>
+                            <div>
+                                <div class="time-label" style="margin-bottom: 6px;">Вылет (ICAO/IATA)</div>
+                                <input type="text" id="manual-dep-icao" class="auth-input" style="margin-bottom: 0; padding: 10px; text-transform: uppercase;" placeholder="UUEE" maxlength="4">
+                            </div>
+                            <div>
+                                <div class="time-label" style="margin-bottom: 6px;">Прилет (ICAO/IATA)</div>
+                                <input type="text" id="manual-arr-icao" class="auth-input" style="margin-bottom: 0; padding: 10px; text-transform: uppercase;" placeholder="UMKK" maxlength="4">
+                            </div>
+                            <div>
+                                <div class="time-label" style="margin-bottom: 6px;">Дата вылета</div>
+                                <input type="date" id="manual-departure-date" class="auth-input" style="margin-bottom: 0; padding: 10px;">
+                            </div>
+                            <div>
+                                <div class="time-label" style="margin-bottom: 6px;">Время (местное)</div>
+                                <input type="time" id="manual-departure-time" class="auth-input" style="margin-bottom: 0; padding: 10px;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-actions" style="margin-top: 0;">
+                        <button class="modal-button modal-button-primary" id="manual-save-btn">Сохранить</button>
+                        <button class="modal-button modal-button-secondary" id="manual-edit-btn" style="display: none;">Изменить</button>
+                        <button class="modal-button modal-button-error" id="manual-delete-btn" style="display: none; background: var(--status-error); color: white;">Удалить</button>
+                    </div>
+                </div>
+
                 <div id="modal-sources-list" style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
                     <!-- Сюда будут динамически рендериться источники -->
                 </div>
@@ -334,6 +372,8 @@
         </div>
     </div>
     <script src="assets/data/airports_tz.js"></script>
+    <script src="assets/data/iata_icao.js"></script>
+    <script src="assets/data/icao_info.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
