@@ -2,11 +2,18 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Flight Time Calculator</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>CrewTime</title>
+    
+    <!-- PWA meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CrewTime">
+    <link rel="apple-touch-icon" href="assets/icons/logo.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1c1c1e">
+
+    <link rel="stylesheet" href="assets/fonts/inter.css">
     <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -391,6 +398,21 @@
             <div class="modal-actions">
                 <button class="modal-button modal-button-secondary" id="confirm-modal-cancel">Отмена</button>
                 <button class="modal-button modal-button-primary" id="confirm-modal-confirm" style="background: var(--status-error);">Да</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно ошибки -->
+    <div class="modal" id="error-modal" style="z-index: 3000;">
+        <div class="modal-backdrop" id="error-modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 320px; text-align: center; border-top: 4px solid var(--status-error);">
+            <div style="margin-bottom: 16px;">
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--status-error);"></i>
+            </div>
+            <div class="modal-title" style="margin-bottom: 12px; font-size: 18px; color: var(--status-error);">Ошибка</div>
+            <div id="error-modal-message" style="margin-bottom: 24px; opacity: 0.9; font-size: 14px; line-height: 1.5; color: var(--text-color);">Текст ошибки</div>
+            <div class="modal-actions">
+                <button class="modal-button modal-button-primary" id="error-modal-close-btn" style="width: 100%;">Понятно</button>
             </div>
         </div>
     </div>

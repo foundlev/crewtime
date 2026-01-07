@@ -1,0 +1,17 @@
+{
+  "name": "CrewTime",
+  "short_name": "CrewTime",
+  "description": "Приложение для экипажа",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1c1c1e",
+  "theme_color": "#007aff",
+  "icons": [
+    {
+      "src": "assets/icons/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

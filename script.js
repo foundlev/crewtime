@@ -1,3 +1,16 @@
+// ===== Регистрация Service Worker =====
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(registration => {
+                console.log('SW registered:', registration);
+            })
+            .catch(error => {
+                console.log('SW registration failed:', error);
+            });
+    });
+}
+
 // ===== Управление кастомным подтверждением =====
 let confirmCallback = null;
 
@@ -8,14 +21,23 @@ function showConfirm(title, message, callback, isDestructive = true) {
     const confirmBtn = document.getElementById('confirm-modal-confirm');
 
     if (titleEl) titleEl.textContent = title;
-    if (messageEl) messageEl.textContent = message;
+    if (messageEl) messageEl.innerHTML = message.replace(/\n/g, '<br>');
     
     if (confirmBtn) {
         confirmBtn.style.background = isDestructive ? 'var(--status-error)' : 'var(--primary-color)';
+        confirmBtn.textContent = 'Да';
     }
 
     confirmCallback = callback;
     if (modal) modal.style.display = 'flex';
+}
+
+function showConfirmPromise(title, message, isDestructive = true) {
+    return new Promise((resolve) => {
+        showConfirm(title, message, (confirmed) => {
+            resolve(confirmed);
+        }, isDestructive);
+    });
 }
 
 function hideConfirm() {
@@ -24,11 +46,32 @@ function hideConfirm() {
     confirmCallback = null;
 }
 
+// ===== Управление модальным окном ошибки =====
+function showErrorModal(message) {
+    const modal = document.getElementById('error-modal');
+    const messageEl = document.getElementById('error-modal-message');
+    
+    if (messageEl) {
+        messageEl.textContent = message;
+    }
+    
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function hideErrorModal() {
+    const modal = document.getElementById('error-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
 // ===== Работа с данными рейса из localStorage (crewPortalInfo) =====
 const CREW_PORTAL_LS_KEY = 'crewPortalInfo';
 const FLIGHT_DATA_SOURCE_LS_KEY = 'flight_data_source';
 const MANUAL_FLIGHT_DATA_LS_KEY = 'manual_flight_data';
-const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/test.php?randomDate=false';
+const CREW_PORTAL_TEST_URL = 'https://myapihelper.na4u.ru/crewtimeapi/api.php';
 
 // ===== Настройки этапов (localStorage) =====
 const STAGE_SETTINGS_LS_KEY = 'stageSettings';
@@ -952,6 +995,21 @@ function updateFlightCardFromData(data) {
         setWebTimeBadge('empty', 'WEB: -', ['fas', 'fa-circle-question']);
     } else {
         const webFlightNum = (data.sources?.web?.number || '').toString().trim();
+        
+        // Обогащаем ICAO кодом, если его нет
+        if (data.sources?.web?.departure) {
+            const dep = data.sources.web.departure;
+            if (dep.iata && !dep.icao && typeof iata_icao !== 'undefined') {
+                dep.icao = iata_icao[dep.iata.toUpperCase()] || '';
+            }
+        }
+        if (data.sources?.web?.arrival) {
+            const arr = data.sources.web.arrival;
+            if (arr.iata && !arr.icao && typeof iata_icao !== 'undefined') {
+                arr.icao = iata_icao[arr.iata.toUpperCase()] || '';
+            }
+        }
+
         const webDepIcao = (data.sources?.web?.departure?.icao || '').toString().trim().toUpperCase();
         const mainFlightNum = (mainData.number || '').toString().trim();
         const mainDepIcao = (mainData.departure?.icao || '').toString().trim().toUpperCase();
@@ -1582,6 +1640,17 @@ function openFlightModal() {
                 { id: 'web', name: 'Web', icon: 'fa-globe', data: data?.sources?.web },
                 { id: 'manual', name: 'Ручной', icon: 'fa-edit', data: manualData }
             ];
+
+            // Обогащаем ICAO для веба в списке источников
+            if (data?.sources?.web) {
+                const web = data.sources.web;
+                if (web.departure && web.departure.iata && !web.departure.icao && typeof iata_icao !== 'undefined') {
+                    web.departure.icao = iata_icao[web.departure.iata.toUpperCase()] || '';
+                }
+                if (web.arrival && web.arrival.iata && !web.arrival.icao && typeof iata_icao !== 'undefined') {
+                    web.arrival.icao = iata_icao[web.arrival.iata.toUpperCase()] || '';
+                }
+            }
 
             // Сортировка: выбранный источник первым
             const sortedSources = [...sourcesData].sort((a, b) => {
@@ -2359,7 +2428,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== Обновление данных рейса (crewPortalInfo) =====
 
     async function fetchCrewPortalInfo() {
-        const response = await fetch(CREW_PORTAL_TEST_URL, {
+        const creds = getAuthCredentials();
+        const url = new URL(CREW_PORTAL_TEST_URL);
+        
+        if (creds.login) url.searchParams.set('username', creds.login);
+        if (creds.password) url.searchParams.set('password', creds.password);
+
+        const response = await fetch(url.toString(), {
             method: 'GET',
             cache: 'no-store'
         });
@@ -2376,7 +2451,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (json.success !== true) {
             // success:false или вообще нет поля
-            throw new Error('API success=false');
+            const errorMsg = json.error || 'API success=false';
+            showErrorModal(errorMsg);
+            throw new Error(errorMsg);
         }
 
         if (!json.data || typeof json.data !== 'object') {
@@ -2385,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Сохраняем ТОЛЬКО data
         json.data._updatedAt = new Date().toISOString();
-        localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(json.data));
+        // localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(json.data)); // Переносим сохранение в обработчик
 
         return json.data;
     }
@@ -2426,10 +2503,56 @@ document.addEventListener('DOMContentLoaded', () => {
             iconEl.classList.add('fa-spin');
 
             try {
-                const data = await fetchCrewPortalInfo();
-                updateFlightCardFromData(data);
-                updateNextStageCountdown();
-                withTempIcon(iconEl, 'ok', 1200);
+                const newData = await fetchCrewPortalInfo();
+                
+                // Сравнение данных перед сохранением
+                const rawCurrent = localStorage.getItem(CREW_PORTAL_LS_KEY);
+                const currentData = rawCurrent ? safeParseJson(rawCurrent) : null;
+                
+                let shouldUpdate = true;
+                
+                if (currentData) {
+                    const currentMain = getMainDataFromRoot(currentData);
+                    const newMain = getMainDataFromRoot(newData);
+                    
+                    if (currentMain && newMain) {
+                        const currentNum = (currentMain.number || '').toString().trim();
+                        const newNum = (newMain.number || '').toString().trim();
+                        
+                        const currentStart = currentMain.startDate || '';
+                        const newStart = newMain.startDate || '';
+                        
+                        if (currentNum !== newNum || currentStart !== newStart) {
+                            let msg = 'Данные о рейсе изменились.\n\n';
+                            
+                            if (currentNum !== newNum) {
+                                msg += `Рейс: ${currentNum} → ${newNum}\n`;
+                            }
+                            
+                            if (currentStart !== newStart) {
+                                const curD = new Date(currentStart);
+                                const newD = new Date(newStart);
+                                const curStr = !isNaN(curD) ? `${formatFlightTime(curD)} ${formatFlightDate(curD)}` : currentStart;
+                                const newStr = !isNaN(newD) ? `${formatFlightTime(newD)} ${formatFlightDate(newD)}` : newStart;
+                                msg += `Вылет: ${curStr} → ${newStr}\n`;
+                            }
+                            
+                            msg += '\nХотите перезаписать данные?';
+                            
+                            shouldUpdate = await showConfirmPromise('Данные изменились', msg, false);
+                        }
+                    }
+                }
+
+                if (shouldUpdate) {
+                    localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(newData));
+                    updateFlightCardFromData(newData);
+                    updateNextStageCountdown();
+                    withTempIcon(iconEl, 'ok', 1200);
+                } else {
+                    withTempIcon(iconEl, 'ok', 1200);
+                }
+
             } catch (err) {
                 console.error('Failed to refresh crew portal info:', err);
                 withTempIcon(iconEl, 'err', 1500);
@@ -2438,6 +2561,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 iconEl.classList.remove('fa-spin');
             }
         }, { passive: false });
+    }
+
+    // Обработчик модального окна ошибки
+    const errorCloseBtn = document.getElementById('error-modal-close-btn');
+    if (errorCloseBtn) {
+        errorCloseBtn.addEventListener('click', hideErrorModal);
+    }
+
+    const errorBackdrop = document.getElementById('error-modal-backdrop');
+    if (errorBackdrop) {
+        errorBackdrop.addEventListener('click', hideErrorModal);
     }
 
     // Если у тебя будут ещё action-button в будущем — тут можно добавить общий хэндлер,
