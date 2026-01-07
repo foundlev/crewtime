@@ -80,13 +80,13 @@ const STAGE_OVERRIDES_LS_KEY = 'stageOverridesByFlight';
 
 const DEFAULT_STAGE_SETTINGS = {
     home_rest: '00:30',
-    home_wakeup: '01:10',
+    home_wakeup: '01:30',
     home_taxi: '00:10',
-    home_exit: '02:30',
+    home_exit: '02:40',
     hotel_rest: '00:30',
-    hotel_wakeup: '01:10',
-    hotel_taxi: '00:10',
-    hotel_exit: '02:30'
+    hotel_wakeup: '01:30',
+    hotel_taxi: '00:15',
+    hotel_exit: '02:00'
 };
 
 // ===== Авторизация (localStorage) =====
