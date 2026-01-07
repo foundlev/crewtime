@@ -13,8 +13,9 @@ if ('serviceWorker' in navigator) {
 
 // ===== Управление кастомным подтверждением =====
 let confirmCallback = null;
+let cancelCallback = null;
 
-function showConfirm(title, message, callback, isDestructive = true) {
+function showConfirm(title, message, callback, isDestructive = true, onCancel = null) {
     const modal = document.getElementById('confirm-modal');
     const titleEl = document.getElementById('confirm-modal-title');
     const messageEl = document.getElementById('confirm-modal-message');
@@ -29,14 +30,18 @@ function showConfirm(title, message, callback, isDestructive = true) {
     }
 
     confirmCallback = callback;
+    cancelCallback = onCancel;
     if (modal) modal.style.display = 'flex';
 }
 
 function showConfirmPromise(title, message, isDestructive = true) {
     return new Promise((resolve) => {
-        showConfirm(title, message, (confirmed) => {
-            resolve(confirmed);
-        }, isDestructive);
+        showConfirm(title, message, () => {
+            hideConfirm();
+            resolve(true);
+        }, isDestructive, () => {
+            resolve(false);
+        });
     });
 }
 
@@ -44,6 +49,7 @@ function hideConfirm() {
     const modal = document.getElementById('confirm-modal');
     if (modal) modal.style.display = 'none';
     confirmCallback = null;
+    cancelCallback = null;
 }
 
 // ===== Управление модальным окном ошибки =====
@@ -2312,6 +2318,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const copyWakeupBtn = document.getElementById('copy-wakeup-time');
+    if (copyWakeupBtn) {
+        copyWakeupBtn.addEventListener('click', () => {
+            const wakeupStage = document.querySelector('.stage-item[data-stage="wakeup"]');
+            if (wakeupStage) {
+                const wakeupTime = wakeupStage.querySelector('.stage-time').textContent;
+                if (wakeupTime && wakeupTime !== '--:--') {
+                    navigator.clipboard.writeText(wakeupTime).then(() => {
+                        const icon = copyWakeupBtn.querySelector('i');
+                        const originalClass = icon.className;
+                        icon.className = 'fas fa-check';
+                        copyWakeupBtn.style.color = 'var(--status-success)';
+                        setTimeout(() => {
+                            icon.className = originalClass;
+                            copyWakeupBtn.style.color = '';
+                        }, 1000);
+                    }).catch(err => {
+                        console.error('Failed to copy: ', err);
+                    });
+                }
+            }
+        });
+    }
+
     const reloadPageBtn = document.getElementById('reload-page');
     if (reloadPageBtn) {
         reloadPageBtn.addEventListener('click', () => {
@@ -2323,8 +2353,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmConfirmBtn = document.getElementById('confirm-modal-confirm');
     const confirmBackdrop = document.getElementById('confirm-modal-backdrop');
 
-    if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', hideConfirm);
-    if (confirmBackdrop) confirmBackdrop.addEventListener('click', hideConfirm);
+    if (confirmCancelBtn) {
+        confirmCancelBtn.addEventListener('click', () => {
+            if (typeof cancelCallback === 'function') cancelCallback();
+            hideConfirm();
+        });
+    }
+    if (confirmBackdrop) {
+        confirmBackdrop.addEventListener('click', () => {
+            if (typeof cancelCallback === 'function') cancelCallback();
+            hideConfirm();
+        });
+    }
     if (confirmConfirmBtn) {
         confirmConfirmBtn.addEventListener('click', () => {
             if (typeof confirmCallback === 'function') {
@@ -2549,6 +2589,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateFlightCardFromData(newData);
                     updateNextStageCountdown();
                     withTempIcon(iconEl, 'ok', 1200);
+                    window.location.reload();
                 } else {
                     withTempIcon(iconEl, 'ok', 1200);
                 }

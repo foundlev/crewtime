@@ -159,8 +159,8 @@
                         <input type="checkbox" class="toggle-checkbox" id="sleep-toggle">
                         <span class="toggle-slider"></span>
                     </label>
-                    <button class="settings-button-small" id="reset-all-data" title="Сбросить все данные" style="color: var(--status-error); background: rgba(255, 69, 58, 0.1);">
-                        <i class="fas fa-trash-alt"></i>
+                    <button class="settings-button-small" id="copy-wakeup-time" title="Скопировать время подъема">
+                        <i class="fas fa-copy"></i>
                     </button>
                     <button class="settings-button-small" id="reload-page" title="Обновить страницу">
                         <i class="fas fa-redo-alt"></i>
@@ -247,6 +247,7 @@
             </div>
 
             <div class="modal-actions">
+                <button class="modal-button modal-button-danger" id="reset-all-data" style="margin-right: auto;">Сбросить</button>
                 <button class="modal-button modal-button-secondary" id="cancel-settings">Отмена</button>
                 <button class="modal-button modal-button-primary" id="save-settings">Сохранить</button>
             </div>

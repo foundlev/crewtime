@@ -56,6 +56,7 @@ body {
     display: flex;
     flex-direction: column;
     transition: background-color 0.3s ease;
+    overflow: hidden; /* Prevent vertical scrolling */
     
     /* Скрытие скроллбара для Chrome, Safari и Opera */
     -webkit-overflow-scrolling: touch;
@@ -450,7 +451,7 @@ body {
     padding: 20px;
     border-radius: 20px;
     box-shadow: 0 8px 25px rgba(0, 122, 255, 0.3);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     text-align: center;
     color: white;
     position: relative;
@@ -500,7 +501,7 @@ body {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .stage-item {
@@ -567,7 +568,7 @@ body {
     padding: 16px;
     border-radius: 20px;
     box-shadow: var(--soft-shadow);
-    margin-bottom: 12px;
+    margin-bottom: 0;
 }
 
 .sleep-header {
@@ -1016,7 +1017,6 @@ body {
 .modal-actions {
     display: flex;
     gap: 12px;
-    margin-top: 24px;
 }
 
 .modal-button {
@@ -1042,6 +1042,12 @@ body {
 .modal-button-secondary {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-color);
+}
+
+.modal-button-danger {
+    background: rgba(255, 69, 58, 0.1);
+    color: var(--status-error);
+    border: 1px solid rgba(255, 69, 58, 0.2);
 }
 
 .source-button.disabled {
