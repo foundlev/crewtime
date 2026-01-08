@@ -1293,6 +1293,26 @@ function updateSleepDisplay() {
 
     if (sleepValueElement) {
         if (sleepHours === null || sleepMinutes === null) {
+            // Если в переменных null, пытаемся восстановить из текущих данных
+            const source = getSelectedDataSource();
+            let data = null;
+            if (source === 'manual') {
+                data = getManualFlightData();
+            } else {
+                const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
+                data = raw ? safeParseJson(raw) : null;
+            }
+            const mainData = getMainDataFromRoot(data);
+            if (mainData && mainData.sleep_hours !== undefined && mainData.sleep_hours !== null) {
+                sleepHours = mainData.sleep_hours;
+                sleepMinutes = mainData.sleep_minutes || 0;
+            } else {
+                sleepHours = 9;
+                sleepMinutes = 0;
+            }
+        }
+
+        if (sleepHours === null || sleepMinutes === null) {
             sleepValueElement.textContent = '-:--';
         } else {
             sleepValueElement.textContent = `${sleepHours}:${sleepMinutes.toString().padStart(2, '0')}`;
@@ -1329,9 +1349,39 @@ function changeSleepTime(minutes) {
     try {
         const raw = localStorage.getItem(CREW_PORTAL_LS_KEY);
         const data = raw ? safeParseJson(raw) : null;
+
+        if (data) {
+            const source = getSelectedDataSource();
+            if (source === 'manual') {
+                const manualData = getManualFlightData();
+                if (manualData) {
+                    manualData.sleep_hours = sleepHours;
+                    manualData.sleep_minutes = sleepMinutes;
+                    saveManualFlightData(manualData);
+                }
+            } else if (data.sources) {
+                // Сохраняем в конкретный источник или в корень, если источников нет
+                if (source === 'calendar' && data.sources.calendar) {
+                    data.sources.calendar.sleep_hours = sleepHours;
+                    data.sources.calendar.sleep_minutes = sleepMinutes;
+                } else if (data.sources.accord) {
+                    data.sources.accord.sleep_hours = sleepHours;
+                    data.sources.accord.sleep_minutes = sleepMinutes;
+                } else {
+                    data.sleep_hours = sleepHours;
+                    data.sleep_minutes = sleepMinutes;
+                }
+                localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(data));
+            } else {
+                data.sleep_hours = sleepHours;
+                data.sleep_minutes = sleepMinutes;
+                localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(data));
+            }
+        }
+
         updateStageTimesFromFlight(data);
-    } catch {
-        // ignore
+    } catch (e) {
+        console.error('Failed to save sleep time', e);
     }
     updateNextStageCountdown();
 }
