@@ -462,6 +462,23 @@ body {
     gap: 16px;
 }
 
+.countdown-card.mode-flight {
+    background: linear-gradient(135deg, #5856D6, #AF52DE);
+    box-shadow: 0 8px 25px rgba(175, 82, 222, 0.35);
+}
+
+.countdown-card.mode-flight .countdown-label::after {
+    content: 'ПРЕВЬЮ';
+    font-size: 9px;
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+}
+
 .countdown-card::before {
     content: '';
     position: absolute;
@@ -757,93 +774,144 @@ body {
 .modal-time-controls {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 14px;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 8px;
+}
+
+.modal-time-selection-wrapper {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.time-adjustment-hint {
+    font-size: 11px;
+    opacity: 0.4;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+.modal-time-display-container {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 10px 20px;
+    min-width: 140px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .modal-time-button {
-    background: rgba(0, 122, 255, 0.12);
+    background: var(--card-bg);
     color: var(--primary-color);
-    border: 1px solid rgba(0, 122, 255, 0.20);
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.2s ease, background 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.modal-time-button i {
+    font-size: 18px;
 }
 
 .modal-time-button:active {
-    transform: scale(0.97);
-    background: rgba(0, 122, 255, 0.18);
-}
-
-.modal-time-value {
-    flex: 1;
-    height: 44px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-color);
-    font-weight: 800;
-    font-size: 20px;
-    letter-spacing: 0.5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-.modal-time-input {
-    display: none;
-    flex: 1;
-    height: 44px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-weight: 700;
-    font-size: 18px;
-    text-align: center;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.modal-subinfo {
-    margin: 0 2px 14px 2px;
-    padding: 12px 12px;
-    border-radius: 14px;
-    background: rgba(0, 122, 255, 0.08);
-    border: 1px solid rgba(0, 122, 255, 0.16);
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-.modal-subinfo-label {
-    font-size: 13px;
-    opacity: 0.75;
-    font-weight: 600;
-}
-
-.modal-subinfo-value {
-    font-size: 16px;
-    font-weight: 800;
-    color: var(--primary-color);
-    letter-spacing: 0.2px;
+    transform: scale(0.92);
+    background: rgba(0, 122, 255, 0.05);
+    border-color: var(--primary-color);
 }
 
 .modal-time-picker {
-    flex: 1;
-    height: 44px;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-weight: 800;
+    font-size: 32px;
+    text-align: center;
+    padding: 0;
+    width: 110px;
+    height: auto;
+    letter-spacing: -0.5px;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: color 0.3s ease;
+}
+
+.modal-time-picker::-webkit-calendar-picker-indicator {
+    display: none;
+}
+
+.stage-icon-circle {
+    width: 42px;
+    height: 42px;
     border-radius: 12px;
-    font-size: 16px;
+    background: rgba(0, 122, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    font-size: 18px;
+}
+
+.stage-details-card {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.detail-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.6;
+}
+
+.detail-label i {
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+}
+
+.detail-value {
+    font-size: 15px;
     font-weight: 700;
-    padding: 8px 10px;
+}
+
+.detail-value.accent {
+    color: var(--primary-color);
+}
+
+.detail-divider {
+    height: 1px;
+    background: var(--border-color);
+    opacity: 0.5;
+}
+
+/* Удаляем старые стили если они мешают */
+.modal-time-value {
+    display: none;
 }
 
 /* Визуальный маркер: этап переопределён вручную */
@@ -868,6 +936,99 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+}
+
+/* Стили для сравнения данных в модалке подтверждения */
+.change-comparison-card {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.change-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.change-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.5;
+}
+
+.change-values {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.change-values i {
+    font-size: 12px;
+    opacity: 0.3;
+}
+
+.old-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--status-empty);
+    text-decoration: line-through;
+    opacity: 0.8;
+}
+
+/* Стили для модального окна изменения времени этапа */
+@media (prefers-color-scheme: light) {
+    .modal-time-button {
+        background: #FFFFFF;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    .modal-time-display-container {
+        background: #F2F2F7;
+    }
+    .stage-details-card {
+        background: #F2F2F7;
+    }
+}
+
+.new-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary-color);
+    background: rgba(0, 122, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+/* Стили для предупреждения о переопределениях */
+.overrides-warning-block {
+    margin-bottom: 5px;
+    padding: 16px;
+    background: rgba(255, 149, 0, 0.08);
+    border: 1px solid rgba(255, 149, 0, 0.15);
+    border-radius: 16px;
+}
+
+.overrides-warning-header {
+    color: var(--status-warning);
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.overrides-warning-text {
+    font-size: 13px;
+    opacity: 0.8;
+    margin-bottom: 14px;
+    line-height: 1.4;
 }
 
 .modal-title {

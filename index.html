@@ -257,37 +257,57 @@
     <!-- Модальное окно редактирования этапа -->
     <div class="modal" id="stage-modal">
         <div class="modal-backdrop" id="stage-modal-backdrop"></div>
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title" id="modal-stage-title">Редактирование этапа</div>
-                <button class="modal-close" id="stage-modal-close">&times;</button>
-            </div>
-            <div class="modal-time-controls">
-                <button class="modal-time-button" id="time-decrease" title="Минус 5 минут">
-                    <i class="fas fa-minus"></i>
-                </button>
+        <div class="modal-content" style="max-width: 360px; padding: 0; overflow: hidden; border-radius: 24px;">
+            <div style="padding: 24px 24px 16px 24px;">
+                <div class="modal-header" style="margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="stage-icon-circle" id="modal-stage-icon-container">
+                            <i class="fas fa-clock" id="modal-stage-icon"></i>
+                        </div>
+                        <div class="modal-title" id="modal-stage-title" style="font-size: 20px;">Редактирование</div>
+                    </div>
+                    <button class="modal-close" id="stage-modal-close" style="margin-top: -8px; margin-right: -8px;">&times;</button>
+                </div>
 
-                <input type="time" class="time-input modal-time-picker" id="modal-time-input" step="60" />
+                <div class="modal-time-selection-wrapper">
+                    <div class="modal-time-controls">
+                        <button class="modal-time-button" id="time-decrease" title="Минус 5 минут">
+                            <i class="fas fa-minus"></i>
+                        </button>
+        
+                        <div class="modal-time-display-container">
+                            <input type="time" class="time-input modal-time-picker" id="modal-time-input" step="60" />
+                        </div>
+        
+                        <button class="modal-time-button" id="time-increase" title="Плюс 5 минут">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="time-adjustment-hint">Нажмите на время для ввода вручную</div>
+                </div>
 
-                <button class="modal-time-button" id="time-increase" title="Плюс 5 минут">
-                    <i class="fas fa-plus"></i>
-                </button>
-            </div>
-
-            <div class="modal-subinfo">
-                <div class="modal-subinfo-label">Рассчитанное:</div>
-                <div class="modal-subinfo-value" id="modal-calculated-time">--:--</div>
-            </div>
-
-            <div class="modal-info">
-                <div class="modal-info-item">
-                    <span id="modal-next-stage-label">До следующего этапа:</span>
-                    <span id="modal-next-stage">- ч -- мин</span>
+                <div class="stage-details-card">
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-calculator"></i>
+                            <span>Рассчитанное</span>
+                        </div>
+                        <div class="detail-value" id="modal-calculated-time">--:--</div>
+                    </div>
+                    <div class="detail-divider"></div>
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span id="modal-next-stage-label">До следующего этапа</span>
+                        </div>
+                        <div class="detail-value accent" id="modal-next-stage">- ч -- мин</div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-actions">
-                <button class="modal-button modal-button-secondary" id="reset-time">Сбросить</button>
-                <button class="modal-button modal-button-primary" id="save-time">Сохранить</button>
+
+            <div class="modal-actions" style="padding: 0 16px 16px 16px; gap: 10px; margin-top: 8px;">
+                <button class="modal-button modal-button-secondary" id="reset-time" style="margin: 0; flex: 1; height: 48px; border-radius: 14px; font-weight: 600;">Сбросить</button>
+                <button class="modal-button modal-button-primary" id="save-time" style="margin: 0; flex: 1.5; height: 48px; border-radius: 14px; font-weight: 600;">Сохранить</button>
             </div>
         </div>
     </div>
@@ -393,12 +413,47 @@
     <!-- Кастомное окно подтверждения -->
     <div class="modal" id="confirm-modal" style="z-index: 2000;">
         <div class="modal-backdrop" id="confirm-modal-backdrop"></div>
-        <div class="modal-content" style="max-width: 320px; text-align: center;">
-            <div class="modal-title" id="confirm-modal-title" style="margin-bottom: 16px; font-size: 18px;">Вы уверены?</div>
-            <div id="confirm-modal-message" style="margin-bottom: 24px; opacity: 0.8; font-size: 14px; line-height: 1.5;">Это действие нельзя будет отменить.</div>
-            <div class="modal-actions">
-                <button class="modal-button modal-button-secondary" id="confirm-modal-cancel">Отмена</button>
-                <button class="modal-button modal-button-primary" id="confirm-modal-confirm" style="background: var(--status-error);">Да</button>
+        <div class="modal-content" style="max-width: 360px; padding: 0; overflow: hidden; border-radius: 24px;">
+            <div style="padding: 24px 24px 16px 24px;">
+                <div class="modal-title" id="confirm-modal-title" style="margin-bottom: 8px; font-size: 20px; text-align: left;">Обновление данных</div>
+                <div id="confirm-modal-message" style="margin-bottom: 20px; opacity: 0.7; font-size: 14px; line-height: 1.5; text-align: left;">Мы обнаружили изменения в данных о рейсе.</div>
+
+                <!-- Визуальное сравнение изменений -->
+                <div id="confirm-data-changes" style="display: none; margin-bottom: 20px;">
+                    <div class="change-comparison-card">
+                        <div class="change-row" id="change-row-flight">
+                            <div class="change-label">Рейс</div>
+                            <div class="change-values">
+                                <span class="old-value" id="old-flight-num">SU 1004</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="new-value" id="new-flight-num">SU 1005</span>
+                            </div>
+                        </div>
+                        <div class="change-row" id="change-row-time">
+                            <div class="change-label">Вылет</div>
+                            <div class="change-values">
+                                <span class="old-value" id="old-flight-time">12:00</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="new-value" id="new-flight-time">12:30</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="confirm-overrides-warning" class="overrides-warning-block" style="display: none;">
+                    <div class="overrides-warning-header">
+                        <i class="fas fa-clock"></i>
+                        Правки будут сброшены
+                    </div>
+                    <div class="overrides-warning-text" style="margin-bottom: 0;">
+                        Внимание: ваши ручные изменения времени этапов будут сброшены на расчетные значения для нового рейса.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="padding: 0 16px 16px 16px; gap: 10px; margin-top: 0;">
+                <button class="modal-button modal-button-secondary" id="confirm-modal-cancel" style="margin: 0; flex: 1; height: 48px; border-radius: 14px; font-weight: 600;">Отмена</button>
+                <button class="modal-button modal-button-primary" id="confirm-modal-confirm" style="margin: 0; flex: 1.5; height: 48px; border-radius: 14px; font-weight: 600;">Обновить</button>
             </div>
         </div>
     </div>

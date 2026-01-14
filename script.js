@@ -15,33 +15,77 @@ if ('serviceWorker' in navigator) {
 let confirmCallback = null;
 let cancelCallback = null;
 
-function showConfirm(title, message, callback, isDestructive = true, onCancel = null) {
+// Состояние отображения времени до вылета в countdown-card
+let countdownMode = 'next_stage'; // 'next_stage' или 'flight'
+let countdownModeTimer = null;
+
+function showConfirm(title, message, callback, isDestructive = true, onCancel = null, showOverridesWarning = false, dataChanges = null) {
     const modal = document.getElementById('confirm-modal');
     const titleEl = document.getElementById('confirm-modal-title');
     const messageEl = document.getElementById('confirm-modal-message');
     const confirmBtn = document.getElementById('confirm-modal-confirm');
+    const overridesWarning = document.getElementById('confirm-overrides-warning');
+    const dataChangesEl = document.getElementById('confirm-data-changes');
 
     if (titleEl) titleEl.textContent = title;
     if (messageEl) messageEl.innerHTML = message.replace(/\n/g, '<br>');
     
     if (confirmBtn) {
         confirmBtn.style.background = isDestructive ? 'var(--status-error)' : 'var(--primary-color)';
-        confirmBtn.textContent = 'Да';
+        confirmBtn.textContent = isDestructive ? 'Да' : 'Обновить';
     }
 
-    confirmCallback = callback;
+    if (overridesWarning) {
+        overridesWarning.style.display = showOverridesWarning ? 'block' : 'none';
+    }
+
+    if (dataChangesEl) {
+        if (dataChanges) {
+            dataChangesEl.style.display = 'block';
+            
+            const rowFlight = document.getElementById('change-row-flight');
+            const rowTime = document.getElementById('change-row-time');
+            
+            if (dataChanges.flight) {
+                rowFlight.style.display = 'flex';
+                document.getElementById('old-flight-num').textContent = dataChanges.flight.old;
+                document.getElementById('new-flight-num').textContent = dataChanges.flight.new;
+            } else {
+                rowFlight.style.display = 'none';
+            }
+            
+            if (dataChanges.time) {
+                rowTime.style.display = 'flex';
+                document.getElementById('old-flight-time').textContent = dataChanges.time.old;
+                document.getElementById('new-flight-time').textContent = dataChanges.time.new;
+            } else {
+                rowTime.style.display = 'none';
+            }
+            
+            // Если есть dataChanges, скрываем стандартное текстовое сообщение, 
+            // так как оно теперь дублирует информацию визуально
+            if (messageEl) messageEl.style.display = 'none';
+        } else {
+            dataChangesEl.style.display = 'none';
+            if (messageEl) messageEl.style.display = 'block';
+        }
+    }
+
+    confirmCallback = () => {
+        callback();
+    };
     cancelCallback = onCancel;
     if (modal) modal.style.display = 'flex';
 }
 
-function showConfirmPromise(title, message, isDestructive = true) {
+function showConfirmPromise(title, message, isDestructive = true, showOverridesWarning = false, dataChanges = null) {
     return new Promise((resolve) => {
         showConfirm(title, message, () => {
             hideConfirm();
-            resolve(true);
+            resolve({ confirmed: true });
         }, isDestructive, () => {
-            resolve(false);
-        });
+            resolve({ confirmed: false });
+        }, showOverridesWarning, dataChanges);
     });
 }
 
@@ -678,6 +722,11 @@ function highlightActiveStage(stageKey) {
 }
 
 function updateNextStageCountdown() {
+    const countdownCardEl = document.querySelector('.countdown-card');
+    if (countdownCardEl) {
+        countdownCardEl.classList.toggle('mode-flight', countdownMode === 'flight');
+    }
+
     if (!lastStageTimeline || !lastStageTimeline.flightStart) {
         highlightActiveStage(null);
         setCountdownCard(['fa-regular', 'fa-hourglass'], 'Загружаем информацию', '- ч -- мин');
@@ -690,6 +739,22 @@ function updateNextStageCountdown() {
     }
 
     const now = new Date();
+
+    // Если включен режим отображения времени до вылета (по клику на плашку)
+    if (countdownMode === 'flight') {
+        const flightStart = lastStageTimeline.flightStart;
+        if (flightStart && !Number.isNaN(flightStart.getTime())) {
+            if (flightStart.getTime() > now.getTime()) {
+                setCountdownCard(['fas', 'fa-plane-departure'], 'До вылета', formatRemainingMs(flightStart.getTime() - now.getTime()));
+            } else {
+                setCountdownCard(['fas', 'fa-plane-departure'], 'Вылет уже прошёл', '0 ч 00 мин');
+            }
+            // В этом режиме не подсвечиваем этапы
+            highlightActiveStage(null);
+            return;
+        }
+    }
+
     const sleepEnabled = getSleepEnabled();
 
     const order = ['rest', 'sleep', 'wakeup', 'taxi', 'exit'];
@@ -918,7 +983,7 @@ function updateFlightCardFromData(data) {
         sleepMinutes = mainData.sleep_minutes || 0;
     } else {
         // Дефолт если в данных нет
-        sleepHours = 9;
+        sleepHours = 10;
         sleepMinutes = 0;
     }
     updateSleepDisplay();
@@ -1307,7 +1372,7 @@ function updateSleepDisplay() {
                 sleepHours = mainData.sleep_hours;
                 sleepMinutes = mainData.sleep_minutes || 0;
             } else {
-                sleepHours = 9;
+                sleepHours = 10;
                 sleepMinutes = 0;
             }
         }
@@ -1504,10 +1569,18 @@ function openStageModal(stageElement) {
     // Показать текущее время (с clamp)
     setStageModalTime(clampStageTime(new Date(stageModalState.currentTime.getTime())));
 
-    // input скрыт при открытии
-    const input = document.getElementById('modal-time-input');
-    const btn = document.getElementById('modal-time-value');
-    if (btn) btn.style.display = 'flex';
+    // Обновляем иконку в зависимости от этапа
+    const iconEl = document.getElementById('modal-stage-icon');
+    if (iconEl) {
+        iconEl.className = 'fas';
+        if (stageKey === 'wakeup') iconEl.classList.add('fa-sun');
+        else if (stageKey === 'taxi') iconEl.classList.add('fa-taxi');
+        else if (stageKey === 'exit') {
+            const context = getCurrentContextFromStorage();
+            iconEl.classList.add(context === 'hotel' ? 'fa-taxi' : 'fa-door-open');
+        }
+        else iconEl.classList.add('fa-clock');
+    }
 
     if (modal) modal.style.display = 'flex';
 }
@@ -1920,14 +1993,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Обработчики для кнопок сна
-    document.getElementById('sleep-decrease').addEventListener('click', () => changeSleepTime(-30));
-    document.getElementById('sleep-increase').addEventListener('click', () => changeSleepTime(30));
+    const sd = document.getElementById('sleep-decrease');
+    if (sd) sd.addEventListener('click', () => changeSleepTime(-30));
+    const si = document.getElementById('sleep-increase');
+    if (si) si.addEventListener('click', () => changeSleepTime(30));
 
     // Обработчики для модальных окон
-    document.getElementById('settings-button-small').addEventListener('click', openSettingsModal);
-    document.getElementById('settings-modal-close').addEventListener('click', closeSettingsModal);
-    document.getElementById('settings-modal-backdrop').addEventListener('click', closeSettingsModal);
-    document.getElementById('cancel-settings').addEventListener('click', closeSettingsModal);
+    const sbs = document.getElementById('settings-button-small');
+    if (sbs) sbs.addEventListener('click', openSettingsModal);
+    const smc = document.getElementById('settings-modal-close');
+    if (smc) smc.addEventListener('click', closeSettingsModal);
+    const smb = document.getElementById('settings-modal-backdrop');
+    if (smb) smb.addEventListener('click', closeSettingsModal);
+    const cs = document.getElementById('cancel-settings');
+    if (cs) cs.addEventListener('click', closeSettingsModal);
 
     document.getElementById('save-settings').addEventListener('click', () => {
         const settings = getStageSettings();
@@ -1969,6 +2048,33 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.stage-item').forEach(stage => {
         stage.addEventListener('click', () => openStageModal(stage));
     });
+
+    // Обработчик клика по countdown-card для переключения режима отображения
+    const countdownCard = document.querySelector('.countdown-card');
+    if (countdownCard) {
+        countdownCard.addEventListener('click', () => {
+            if (countdownMode === 'next_stage') {
+                countdownMode = 'flight';
+                updateNextStageCountdown();
+
+                // Автоматический возврат через 3 секунды
+                if (countdownModeTimer) clearTimeout(countdownModeTimer);
+                countdownModeTimer = setTimeout(() => {
+                    countdownMode = 'next_stage';
+                    updateNextStageCountdown();
+                    countdownModeTimer = null;
+                }, 3000);
+            } else {
+                // Если уже в режиме flight — возвращаемся немедленно
+                countdownMode = 'next_stage';
+                if (countdownModeTimer) {
+                    clearTimeout(countdownModeTimer);
+                    countdownModeTimer = null;
+                }
+                updateNextStageCountdown();
+            }
+        });
+    }
 
     document.getElementById('stage-modal-close').addEventListener('click', closeStageModal);
     document.getElementById('stage-modal-backdrop').addEventListener('click', closeStageModal);
@@ -2316,7 +2422,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (manualSaveBtn) {
         manualSaveBtn.addEventListener('click', () => {
+            // Перед сохранением новых данных проверяем, изменился ли рейс
+            const oldManualData = getManualFlightData();
             updateManualDataLogic();
+            const newManualData = getManualFlightData();
+            
+            if (oldManualData && newManualData) {
+                const oldId = getFlightId({ sources: { manual: oldManualData } });
+                const newId = getFlightId({ sources: { manual: newManualData } });
+                
+                if (oldId !== newId) {
+                    const allOverrides = getAllStageOverrides();
+                    if (oldId && allOverrides[oldId]) {
+                        delete allOverrides[oldId];
+                        localStorage.setItem(STAGE_OVERRIDES_LS_KEY, JSON.stringify(allOverrides));
+                    }
+                }
+            }
+
             setManualUIState(true);
             updateFlightCardFromStorage();
             updateNextStageCountdown(); // Обновить таймеры на главном экране
@@ -2470,50 +2593,64 @@ document.addEventListener('DOMContentLoaded', () => {
         updateManualOffsetsUI();
     };
 
-    // Обработчик для переключателя сна
-    document.getElementById('sleep-toggle').addEventListener('change', function() {
-        saveSleepEnabled(this.checked);
+    const st = document.getElementById('sleep-toggle');
+    if (st) {
+        st.addEventListener('change', function() {
+            saveSleepEnabled(this.checked);
 
-        const sleepStages = document.querySelectorAll('.stage-item[data-stage="rest"], .stage-item[data-stage="sleep"]');
-        const sleepControls = document.querySelector('.sleep-controls');
-        const decreaseButton = document.getElementById('sleep-decrease');
-        const increaseButton = document.getElementById('sleep-increase');
+            const sleepStages = document.querySelectorAll('.stage-item[data-stage="rest"], .stage-item[data-stage="sleep"]');
+            const sleepControls = document.querySelector('.sleep-controls');
+            const decreaseButton = document.getElementById('sleep-decrease');
+            const increaseButton = document.getElementById('sleep-increase');
 
-        if (this.checked) {
-            sleepStages.forEach((stage) => stage.classList.remove('stage-inactive'));
+            if (this.checked) {
+                sleepStages.forEach((stage) => stage.classList.remove('stage-inactive'));
 
-            if (sleepControls) sleepControls.classList.remove('sleep-controls--disabled');
-            if (decreaseButton) decreaseButton.disabled = false;
-            if (increaseButton) increaseButton.disabled = false;
+                if (sleepControls) sleepControls.classList.remove('sleep-controls--disabled');
+                if (decreaseButton) decreaseButton.disabled = false;
+                if (increaseButton) increaseButton.disabled = false;
 
-            // вернём логику ограничений 0:30..15:00
-            updateSleepDisplay();
-        } else {
-            sleepStages.forEach((stage) => stage.classList.add('stage-inactive'));
+                // вернём логику ограничений 0:30..15:00
+                updateSleepDisplay();
+            } else {
+                sleepStages.forEach((stage) => stage.classList.add('stage-inactive'));
 
-            if (sleepControls) sleepControls.classList.add('sleep-controls--disabled');
-            if (decreaseButton) decreaseButton.disabled = true;
-            if (increaseButton) increaseButton.disabled = true;
-        }
+                if (sleepControls) sleepControls.classList.add('sleep-controls--disabled');
+                if (decreaseButton) decreaseButton.disabled = true;
+                if (increaseButton) increaseButton.disabled = true;
+            }
 
-        updateNextStageCountdown();
-    });
+            updateNextStageCountdown();
+        });
+    }
 
     // Обработчик для переключения видимости пароля
-    document.getElementById('password-toggle').addEventListener('click', function() {
-        const passwordInput = document.getElementById('password-input');
-        const icon = this.querySelector('i');
+    const pt = document.getElementById('password-toggle');
+    if (pt) {
+        pt.addEventListener('click', function() {
+            const passwordInput = document.getElementById('password-input');
+            const icon = this.querySelector('i');
 
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            passwordInput.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-    });
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    }
+
+    const emcb = document.getElementById('error-modal-close-btn');
+    if (emcb) {
+        emcb.addEventListener('click', hideErrorModal);
+    }
+    const embb = document.getElementById('error-modal-backdrop');
+    if (embb) {
+        embb.addEventListener('click', hideErrorModal);
+    }
 
     // ===== Обновление данных рейса (crewPortalInfo) =====
 
@@ -2614,27 +2751,76 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         if (currentNum !== newNum || currentStart !== newStart) {
                             let msg = 'Данные о рейсе изменились.\n\n';
+                            const dataChanges = {};
                             
                             if (currentNum !== newNum) {
                                 msg += `Рейс: ${currentNum} → ${newNum}\n`;
+                                dataChanges.flight = { old: currentNum, new: newNum };
                             }
                             
                             if (currentStart !== newStart) {
                                 const curD = new Date(currentStart);
                                 const newD = new Date(newStart);
-                                const curStr = !isNaN(curD) ? `${formatFlightTime(curD)} ${formatFlightDate(curD)}` : currentStart;
-                                const newStr = !isNaN(newD) ? `${formatFlightTime(newD)} ${formatFlightDate(newD)}` : newStart;
+                                const curStr = !isNaN(curD) ? `${formatFlightTime(curD)}` : currentStart;
+                                const newStr = !isNaN(newD) ? `${formatFlightTime(newD)}` : newStart;
                                 msg += `Вылет: ${curStr} → ${newStr}\n`;
+                                dataChanges.time = { old: curStr, new: newStr };
                             }
                             
                             msg += '\nХотите перезаписать данные?';
                             
-                            shouldUpdate = await showConfirmPromise('Данные изменились', msg, false);
+                            const overrides = getStageOverridesForFlight(currentData);
+                            const hasOverrides = Object.keys(overrides).length > 0;
+
+                            const result = await showConfirmPromise('Данные изменились', msg, false, hasOverrides, dataChanges);
+                            shouldUpdate = result.confirmed;
+
+            if (shouldUpdate && hasOverrides) {
+                                // Always reset overrides if they exist when data changes
+                                const allOverrides = getAllStageOverrides();
+                                const oldId = getFlightId(currentData);
+                                if (oldId && allOverrides[oldId]) {
+                                    delete allOverrides[oldId];
+                                }
+                                
+                                // Также очистим на всякий случай для нового ID, если вдруг там что-то было
+                                const newId = getFlightId(newData);
+                                if (newId && allOverrides[newId]) {
+                                    delete allOverrides[newId];
+                                }
+                                
+                                localStorage.setItem(STAGE_OVERRIDES_LS_KEY, JSON.stringify(allOverrides));
+                            }
                         }
                     }
                 }
 
                 if (shouldUpdate) {
+                    // Сохраняем пользовательские настройки сна перед перезаписью данных
+                    const rawCurrentForSleep = localStorage.getItem(CREW_PORTAL_LS_KEY);
+                    const currentDataForSleep = rawCurrentForSleep ? safeParseJson(rawCurrentForSleep) : null;
+                    
+                    if (currentDataForSleep && newData) {
+                        // Переносим настройки сна из старых данных в новые
+                        if (currentDataForSleep.sources) {
+                            if (!newData.sources) newData.sources = {};
+                            
+                            ['accord', 'calendar'].forEach(src => {
+                                if (currentDataForSleep.sources[src] && newData.sources[src]) {
+                                    if (currentDataForSleep.sources[src].sleep_hours !== undefined && currentDataForSleep.sources[src].sleep_hours !== null) {
+                                        newData.sources[src].sleep_hours = currentDataForSleep.sources[src].sleep_hours;
+                                        newData.sources[src].sleep_minutes = currentDataForSleep.sources[src].sleep_minutes;
+                                    }
+                                }
+                            });
+                        }
+                        
+                        if (currentDataForSleep.sleep_hours !== undefined && currentDataForSleep.sleep_hours !== null) {
+                            newData.sleep_hours = currentDataForSleep.sleep_hours;
+                            newData.sleep_minutes = currentDataForSleep.sleep_minutes;
+                        }
+                    }
+
                     localStorage.setItem(CREW_PORTAL_LS_KEY, JSON.stringify(newData));
                     updateFlightCardFromData(newData);
                     updateNextStageCountdown();
