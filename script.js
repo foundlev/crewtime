@@ -133,6 +133,7 @@ const DEFAULT_STAGE_SETTINGS = {
     home_wakeup: '01:30',
     home_taxi: '00:10',
     home_exit: '02:40',
+    home_exit_passenger: '02:10',
     hotel_rest: '00:30',
     hotel_wakeup: '01:30',
     hotel_taxi: '00:15',
@@ -721,7 +722,10 @@ function updateStageTimesFromFlight(data) {
     const settings = getStageSettings();
     const prefix = context === 'hotel' ? 'hotel_' : 'home_';
 
-    const exitOffsetMin = parseHHMMToMinutes(settings[`${prefix}exit`]);
+    const exitKey = (context === 'home' && d.isWork === false)
+        ? 'home_exit_passenger'
+        : `${prefix}exit`;
+    const exitOffsetMin = parseHHMMToMinutes(settings[exitKey]);
     const taxiOffsetMin = parseHHMMToMinutes(settings[`${prefix}taxi`]);
     const wakeupOffsetMin = parseHHMMToMinutes(settings[`${prefix}wakeup`]);
     const restOffsetMin = parseHHMMToMinutes(settings[`${prefix}rest`]);
