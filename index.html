@@ -330,8 +330,11 @@
                         <div id="modal-dep-codes" style="font-size: 18px; font-weight: 600;">--- / ----</div>
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <div id="modal-dep-city" style="font-size: 14px; opacity: 0.7;">------</div>
-                            <div style="display: flex;">
-                                <div id="modal-dep-tz" class="tz-offset-pill" style="display: none;">МСК+1</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                <div id="modal-dep-tz" class="tz-offset-pill" style="display: none; margin: 0;">МСК+1</div>
+                                <div id="modal-dep-terminal" class="flight-info-pill flight-info-pill--terminal" style="display: none;"></div>
+                                <div id="modal-dep-gate" class="flight-info-pill flight-info-pill--gate" style="display: none;"></div>
+                                <div id="modal-dep-stand" class="flight-info-pill flight-info-pill--stand" style="display: none;"></div>
                             </div>
                         </div>
                     </div>
@@ -342,16 +345,51 @@
                         <div id="modal-arr-codes" style="font-size: 18px; font-weight: 600;">--- / ----</div>
                         <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
                             <div id="modal-arr-city" style="font-size: 14px; opacity: 0.7;">------</div>
-                            <div style="display: flex;">
-                                <div id="modal-arr-tz" class="tz-offset-pill" style="display: none;">МСК-1</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end;">
+                                <div id="modal-arr-tz" class="tz-offset-pill" style="display: none; margin: 0;">МСК-1</div>
+                                <div id="modal-arr-terminal" class="flight-info-pill flight-info-pill--terminal" style="display: none;"></div>
+                                <div id="modal-arr-gate" class="flight-info-pill flight-info-pill--gate" style="display: none;"></div>
+                                <div id="modal-arr-stand" class="flight-info-pill flight-info-pill--stand" style="display: none;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            <!-- Превью эстафеты (Relay Preview) -->
+            <div id="relay-preview-container" style="display: none; margin: 0 0 20px 0; cursor: pointer; background: rgba(142, 142, 147, 0.08); padding: 12px; border-radius: 14px; border: 1px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 11px; font-weight: 600; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.5px;">Эстафета</span>
+                    <i class="fas fa-chevron-right" style="font-size: 10px; opacity: 0.4;"></i>
+                </div>
+                <div id="relay-preview-content" style="display: flex; align-items: center; justify-content: space-between; gap: 4px; overflow-x: auto; padding-bottom: 4px;">
+                    <!-- Динамически заполняется в script.js -->
+                </div>
+            </div>
+
             <div class="modal-info">
-                <div class="modal-info-item">
-                    <span>Источник данных:</span>
+                <div class="modal-info-item" style="border-bottom: none; padding-bottom: 0;">
+                    <button class="modal-button modal-button-primary" id="open-sources-btn" style="width: 100%; height: 50px; border-radius: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <i class="fas fa-database"></i>
+                        <span>Источники данных</span>
+                        <i class="fas fa-chevron-right" style="margin-left: auto; font-size: 14px; opacity: 0.6;"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно источников данных -->
+    <div class="modal" id="sources-modal">
+        <div class="modal-backdrop" id="sources-modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Источники данных</div>
+                <button class="modal-close" id="sources-modal-close">&times;</button>
+            </div>
+            
+            <div class="modal-info">
+                <div class="modal-info-item" style="border-bottom: none; padding-bottom: 0;">
                     <div class="source-toggle" id="source-toggle">
                         <button class="source-button active" data-source="accord">
                             <i class="fas fa-database"></i> Аккорд
@@ -409,6 +447,20 @@
     <script src="assets/data/iata_icao.js"></script>
     <script src="assets/data/icao_info.js"></script>
     <script src="script.js"></script>
+
+    <!-- Модальное окно эстафеты (детальное) -->
+    <div class="modal" id="relay-modal">
+        <div class="modal-backdrop" id="relay-modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <div class="modal-title">План эстафеты</div>
+                <button class="modal-close" id="relay-modal-close">&times;</button>
+            </div>
+            <div id="relay-detailed-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 60vh; padding-right: 4px;">
+                <!-- Динамически заполняется -->
+            </div>
+        </div>
+    </div>
 
     <!-- Кастомное окно подтверждения -->
     <div class="modal" id="confirm-modal" style="z-index: 2000;">

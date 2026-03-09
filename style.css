@@ -1306,6 +1306,34 @@ body {
     margin: 7px 15px 0 15px;
 }
 
+.flight-info-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(142, 142, 147, 0.1);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.flight-info-pill--terminal {
+    background: rgba(0, 122, 255, 0.1);
+    color: var(--primary-color);
+    border-color: rgba(0, 122, 255, 0.2);
+}
+
+.flight-info-pill--gate {
+    background: rgba(255, 159, 10, 0.1);
+    color: #ff9f0a;
+    border-color: rgba(255, 159, 10, 0.2);
+}
+
+.flight-info-pill--stand {
+    background: rgba(48, 209, 88, 0.1);
+    color: #30d158;
+    border-color: rgba(48, 209, 88, 0.2);
+}
+
 /* Анимация для плавного обновления времени */
 @keyframes softUpdate {
     0% { opacity: 1; transform: translateY(0); }
@@ -1359,4 +1387,189 @@ body {
     .settings-button-small {
         background: rgba(0, 122, 255, 0.08);
     }
+}
+
+/* Relay Preview & Detailed List */
+.relay-node {
+    font-size: 10px;
+    font-weight: 700;
+    opacity: 0.8;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.relay-node--current {
+    color: var(--primary-color);
+    background: rgba(0, 122, 255, 0.15);
+    padding: 2px 5px;
+    border-radius: 5px;
+    border: 1px solid rgba(0, 122, 255, 0.3);
+    font-size: 11px;
+    opacity: 1;
+}
+
+.relay-segment {
+    flex-grow: 1;
+    height: 3px;
+    min-width: 6px;
+    border-radius: 2px;
+}
+
+.relay-segment--work {
+    background: var(--primary-color);
+}
+
+.relay-segment--passenger {
+    background: transparent;
+    border-top: 2px dashed var(--status-empty);
+    height: 0;
+    margin-top: 1px;
+}
+
+.relay-segment--current {
+    height: 4px;
+    box-shadow: 0 0 8px var(--primary-color);
+}
+
+/* Detailed Relay List */
+.relay-item {
+    background: rgba(142, 142, 147, 0.1);
+    border-radius: 16px;
+    padding: 14px;
+    border: 1px solid transparent;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.relay-item--current {
+    border-color: var(--primary-color);
+    background: rgba(0, 122, 255, 0.05);
+}
+
+.relay-item--next {
+    border-color: var(--status-success);
+    background: rgba(48, 209, 88, 0.05);
+}
+
+.relay-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.relay-item-flight {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.relay-item-type {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+}
+
+.relay-item-type--work {
+    background: rgba(0, 122, 255, 0.15);
+    color: var(--primary-color);
+}
+
+.relay-item-type--passenger {
+    background: rgba(142, 142, 147, 0.15);
+    color: var(--status-empty);
+}
+
+.relay-item-route {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.relay-item-airport {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.relay-item-airport--arrival {
+    text-align: right;
+    align-items: flex-end;
+}
+
+.relay-item-icao {
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: -0.5px;
+}
+
+.relay-item-city {
+    font-size: 11px;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+    text-align: inherit;
+}
+
+.relay-item-time {
+    font-size: 13px;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.relay-rest-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    margin: 4px auto;
+    width: fit-content;
+    position: relative;
+    z-index: 1;
+}
+
+.relay-rest--short { background: rgba(255, 69, 58, 0.12); color: #FF453A; } /* < 4h */
+.relay-rest--medium { background: rgba(255, 159, 10, 0.12); color: #FF9F0A; } /* < 12h */
+.relay-rest--normal { background: rgba(255, 214, 10, 0.12); color: #FFD60A; } /* < 23h */
+.relay-rest--long { background: rgba(48, 209, 88, 0.12); color: #30D158; } /* < 40h */
+.relay-rest--full { background: rgba(0, 122, 255, 0.12); color: #007AFF; } /* > 40h */
+
+.relay-item-duration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.5;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    letter-spacing: 0.3px;
+}
+
+.relay-item-badge {
+    position: absolute;
+    top: -10px;
+    right: 14px;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 8px;
+    text-transform: uppercase;
+}
+
+.relay-item-badge--current {
+    background: var(--primary-color);
+    color: white;
+}
+
+.relay-item-badge--next {
+    background: var(--status-success);
+    color: white;
 }
